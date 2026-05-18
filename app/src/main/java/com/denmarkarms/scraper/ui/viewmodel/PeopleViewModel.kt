@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.denmarkarms.scraper.DenmarkArmsApp
 import com.denmarkarms.scraper.domain.Appointment
 import com.denmarkarms.scraper.domain.Person
+import com.denmarkarms.scraper.domain.PrefsKeys
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
@@ -18,7 +19,11 @@ import java.util.Locale
 
 class PeopleViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repo = (application as DenmarkArmsApp).container.companiesHouseRepository
+    private val app = application as DenmarkArmsApp
+    private val repo = app.container.companiesHouseRepository
+
+    val hasApiKey: Boolean
+        get() = app.container.prefs.getString(PrefsKeys.COMPANIES_HOUSE_API_KEY, "").isNullOrBlank().not()
 
     val persons: StateFlow<List<Person>> =
         repo.persons.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

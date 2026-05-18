@@ -63,25 +63,60 @@ fun PeopleCompaniesScreen(vm: PeopleViewModel = viewModel()) {
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(32.dp)
+                ) {
                     Icon(
-                        Icons.Default.People,
+                        if (vm.hasApiKey) Icons.Default.People else Icons.Default.Key,
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
                         tint = MaterialTheme.colorScheme.outline
                     )
                     Spacer(Modifier.height(16.dp))
-                    Text(
-                        "No people or companies tracked yet",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Add person names in Config and run a check",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.outline
-                    )
+                    if (!vm.hasApiKey) {
+                        Text(
+                            "Companies House API key required",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "A free API key is needed to search Companies House. Register at:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "developer.company-information.service.gov.uk",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW,
+                                        Uri.parse("https://developer.company-information.service.gov.uk/"))
+                                )
+                            }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Then add the key in the Config tab under Companies House API Key.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    } else {
+                        Text(
+                            "No people or companies tracked yet",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Add person names in Config and run a check",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
                 }
             }
         } else {
