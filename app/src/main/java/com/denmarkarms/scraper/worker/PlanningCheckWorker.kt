@@ -27,12 +27,19 @@ class PlanningCheckWorker(context: Context, params: WorkerParameters) : Coroutin
     private fun sendLocalNotification(changes: List<ChangeLogEntry>) {
         val body = changes.take(3).joinToString("\n") { "• ${it.description.take(80)}" } +
             if (changes.size > 3) "\n…and ${changes.size - 3} more" else ""
+        val actionUrl = changes.firstOrNull()?.let { planningUrl(it) }
         LocalNotificationHelper.notify(
             applicationContext,
             id = 1001,
             title = "Planning: ${changes.size} new change${if (changes.size != 1) "s" else ""}",
-            body = body
+            body = body,
+            actionUrl = actionUrl
         )
+    }
+
+    private fun planningUrl(change: ChangeLogEntry): String {
+        val tab = if (change.type == com.denmarkarms.scraper.domain.ChangeType.NEW_DOCUMENT) "documents" else "summary"
+        return "https://pa.newham.gov.uk/online-applications/applicationDetails.do?activeTab=$tab&keyVal=${change.entityId}"
     }
 
     private suspend fun sendNotification(changes: List<ChangeLogEntry>, app: DenmarkArmsApp) {

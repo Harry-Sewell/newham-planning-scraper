@@ -27,13 +27,21 @@ class CompaniesHouseCheckWorker(context: Context, params: WorkerParameters) : Co
     private fun sendLocalNotification(changes: List<ChangeLogEntry>) {
         val body = changes.take(3).joinToString("\n") { "• ${it.description.take(80)}" } +
             if (changes.size > 3) "\n…and ${changes.size - 3} more" else ""
+        val actionUrl = changes.firstOrNull()?.let { companiesHouseUrl(it) }
         LocalNotificationHelper.notify(
             applicationContext,
             id = 1002,
             title = "Companies House: ${changes.size} new change${if (changes.size != 1) "s" else ""}",
-            body = body
+            body = body,
+            actionUrl = actionUrl
         )
     }
+
+    private fun companiesHouseUrl(change: ChangeLogEntry): String =
+        if (change.type == com.denmarkarms.scraper.domain.ChangeType.NEW_PERSON)
+            "https://find-and-update.company-information.service.gov.uk/officers/${change.entityId}/appointments"
+        else
+            "https://find-and-update.company-information.service.gov.uk/company/${change.entityId}"
 
     private suspend fun sendNotification(changes: List<ChangeLogEntry>, app: DenmarkArmsApp) {
         val container = app.container

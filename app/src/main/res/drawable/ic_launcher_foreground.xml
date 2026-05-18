@@ -4,7 +4,39 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+  <!-- Magnifying glass circle -->
   <path
-      android:fillColor="#FFFFFF"
-      android:pathData="M54,20 L75,45 L65,45 L65,85 L43,85 L43,45 L33,45 Z"/>
+      android:fillColor="#00000000"
+      android:strokeColor="#FFFFFF"
+      android:strokeWidth="7"
+      android:pathData="M44,25 A19,19 0 1,0 44,63 A19,19 0 1,0 44,25 Z"/>
+
+  <!-- Handle -->
+  <path
+      android:fillColor="#00000000"
+      android:strokeColor="#FFFFFF"
+      android:strokeWidth="7"
+      android:strokeLineCap="round"
+      android:pathData="M58,58 L76,76"/>
+
+  <!-- Document lines inside lens -->
+  <path
+      android:fillColor="#00000000"
+      android:strokeColor="#FFFFFF"
+      android:strokeWidth="3.5"
+      android:strokeLineCap="round"
+      android:pathData="M33,40 L55,40"/>
+  <path
+      android:fillColor="#00000000"
+      android:strokeColor="#FFFFFF"
+      android:strokeWidth="3.5"
+      android:strokeLineCap="round"
+      android:pathData="M33,47 L55,47"/>
+  <path
+      android:fillColor="#00000000"
+      android:strokeColor="#FFFFFF"
+      android:strokeWidth="3.5"
+      android:strokeLineCap="round"
+      android:pathData="M33,54 L47,54"/>
 </vector>

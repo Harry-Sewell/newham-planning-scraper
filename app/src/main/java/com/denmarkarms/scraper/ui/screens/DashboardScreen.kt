@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -143,26 +144,39 @@ private fun SwipeToDismissChangeCard(
 
 @Composable
 private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String) {
-    val (icon, color) = when (entry.type) {
-        ChangeType.NEW_APPLICATION -> Icons.Default.AddCircle to MaterialTheme.colorScheme.primary
-        ChangeType.NEW_DOCUMENT -> Icons.Default.Description to MaterialTheme.colorScheme.secondary
-        ChangeType.STATUS_CHANGE -> Icons.Default.Update to MaterialTheme.colorScheme.tertiary
-        ChangeType.NEW_PERSON -> Icons.Default.PersonAdd to MaterialTheme.colorScheme.primary
-        ChangeType.NEW_APPOINTMENT -> Icons.Default.Work to MaterialTheme.colorScheme.secondary
-        else -> Icons.Default.Info to MaterialTheme.colorScheme.outline
+    val (icon, accentColor, label) = when (entry.type) {
+        ChangeType.NEW_APPLICATION -> Triple(Icons.Default.AddCircle, MaterialTheme.colorScheme.primary, "New Application")
+        ChangeType.NEW_DOCUMENT -> Triple(Icons.Default.Description, MaterialTheme.colorScheme.secondary, "New Document")
+        ChangeType.STATUS_CHANGE -> Triple(Icons.Default.Update, MaterialTheme.colorScheme.tertiary, "Status Change")
+        ChangeType.NEW_PERSON -> Triple(Icons.Default.PersonAdd, MaterialTheme.colorScheme.primary, "New Person")
+        ChangeType.NEW_APPOINTMENT -> Triple(Icons.Default.Work, MaterialTheme.colorScheme.secondary, "New Appointment")
+        else -> Triple(Icons.Default.Info, MaterialTheme.colorScheme.outline, "Info")
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(8.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
+        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(accentColor)
+            )
+            Column(modifier = Modifier.padding(12.dp).weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = accentColor,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
                 Text(entry.description, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(4.dp))
                 Text(
