@@ -90,11 +90,13 @@ class PlanningRepository(
         val changes = mutableListOf<ChangeLogEntry>()
         val freshDocs = service.getDocuments(keyVal)
         val knownDocs = db.planningDocumentDao().getForApplicationOnce(keyVal)
+        val knownUrls = knownDocs.map { it.url }.filter { it.isNotBlank() }.toSet()
         val knownNames = knownDocs.map { it.name }.toSet()
         val appRef = db.planningApplicationDao().findByKeyVal(keyVal)?.reference?.takeIf { it.isNotBlank() } ?: keyVal
 
         for (doc in freshDocs) {
-            if (doc.name !in knownNames) {
+            val alreadyKnown = if (doc.url.isNotBlank()) doc.url in knownUrls else doc.name in knownNames
+            if (!alreadyKnown) {
                 db.planningDocumentDao().insert(
                     PlanningDocumentEntity(
                         applicationKeyVal = keyVal,

@@ -63,7 +63,7 @@ class NewhamPlanningService(private val client: OkHttpClient) {
         try {
             val url = "$baseUrl/applicationDetails.do?activeTab=documents&keyVal=$keyVal"
             val html = get(url)
-            val doc = Jsoup.parse(html)
+            val doc = Jsoup.parse(html, url)  // base URL needed so absUrl() resolves correctly
             parseDocuments(doc, keyVal)
         } catch (e: Exception) {
             emptyList()
