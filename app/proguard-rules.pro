@@ -1,0 +1,7 @@
+-keep class com.denmarkarms.scraper.data.db.** { *; }
+-keep class com.sun.mail.** { *; }
+-keep class javax.mail.** { *; }
+-dontwarn com.sun.mail.**
+-dontwarn javax.mail.**
+-dontwarn org.jsoup.**
+-dontwarn okhttp3.**

@@ -1,0 +1,79 @@
+package com.denmarkarms.scraper.ui.viewmodel
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.denmarkarms.scraper.DenmarkArmsApp
+import com.denmarkarms.scraper.data.db.entity.RecipientEntity
+import com.denmarkarms.scraper.domain.*
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+class ConfigViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val container = (application as DenmarkArmsApp).container
+    private val planningRepo = container.planningRepository
+    private val chRepo = container.companiesHouseRepository
+    private val prefs = container.prefs
+    private val db = container.db
+
+    val monitoredAddresses: StateFlow<List<MonitoredAddress>> =
+        planningRepo.monitoredAddresses
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val monitoredPersons: StateFlow<List<MonitoredPerson>> =
+        chRepo.monitoredPersons
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val recipients: StateFlow<List<Recipient>> =
+        db.recipientDao().getAll()
+            .map { list -> list.map { Recipient(it.id, it.type, it.value, it.active) } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun addAddress(address: String) = viewModelScope.launch {
+        if (address.isNotBlank()) planningRepo.addMonitoredAddress(address)
+    }
+
+    fun removeAddress(address: MonitoredAddress) = viewModelScope.launch {
+        planningRepo.removeMonitoredAddress(address)
+    }
+
+    fun toggleMonitoredAddress(address: MonitoredAddress) = viewModelScope.launch {
+        planningRepo.toggleMonitoredAddress(address)
+    }
+
+    fun addPerson(name: String) = viewModelScope.launch {
+        if (name.isNotBlank()) chRepo.addMonitoredPerson(name)
+    }
+
+    fun removePerson(person: MonitoredPerson) = viewModelScope.launch {
+        chRepo.removeMonitoredPerson(person)
+    }
+
+    fun toggleMonitoredPerson(person: MonitoredPerson) = viewModelScope.launch {
+        chRepo.toggleMonitoredPerson(person)
+    }
+
+    fun addRecipient(type: String, value: String) = viewModelScope.launch {
+        if (value.isNotBlank()) {
+            db.recipientDao().insert(RecipientEntity(type = type, value = value.trim()))
+        }
+    }
+
+    fun removeRecipient(recipient: Recipient) = viewModelScope.launch {
+        db.recipientDao().delete(RecipientEntity(recipient.id, recipient.type, recipient.value, recipient.active))
+    }
+
+    fun toggleRecipient(recipient: Recipient) = viewModelScope.launch {
+        db.recipientDao().update(RecipientEntity(recipient.id, recipient.type, recipient.value, !recipient.active))
+    }
+
+    fun getPref(key: String, default: String = ""): String = prefs.getString(key, default) ?: default
+
+    fun setPref(key: String, value: String) {
+        prefs.edit().putString(key, value).apply()
+    }
+}
