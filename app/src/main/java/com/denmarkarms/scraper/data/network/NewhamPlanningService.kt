@@ -7,7 +7,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import java.net.URLEncoder
 
 data class PlanningApplicationResult(
     val keyVal: String,
@@ -31,36 +30,29 @@ class NewhamPlanningService(private val client: OkHttpClient) {
     suspend fun searchApplications(address: String): List<PlanningApplicationResult> = withContext(Dispatchers.IO) {
         try {
             val searchPageUrl = "$baseUrl/search.do?action=simple&searchType=Application"
-            // Load the search page first to establish a session cookie
+
+            // Load search page to get session cookie and CSRF token
             val pageHtml = get(searchPageUrl)
-            val pageDoc = Jsoup.parse(pageHtml, searchPageUrl)
-            val csrfToken = pageDoc.select("input[name=_csrf]").attr("value")
+            val csrfToken = Jsoup.parse(pageHtml).select("input[name=_csrf]").attr("value")
 
-            // Idox portals reliably accept a GET with params — try this first
-            val encoded = URLEncoder.encode(address, "UTF-8")
-            val getUrl = "$baseUrl/search.do?action=Search&searchType=Application" +
-                "&searchCriteria.description=$encoded"
-            val getHtml = get(getUrl)
-            val getResults = parseSearchResults(Jsoup.parse(getHtml, baseUrl))
-            if (getResults.isNotEmpty()) return@withContext getResults
-
-            // Fallback: POST form submission
+            // POST to the correct Newham/Idox endpoint with the correct field names
             val formBody = FormBody.Builder()
-                .add("searchCriteria.description", address)
-                .add("searchCriteria.searchType", "Application")
-                .add("action", "Search")
-                .apply { if (csrfToken.isNotEmpty()) add("_csrf", csrfToken) }
+                .add("_csrf", csrfToken)
+                .add("searchType", "Application")
+                .add("searchCriteria.caseStatus", "")
+                .add("searchCriteria.simpleSearchString", address)
+                .add("searchCriteria.simpleSearch", "true")
                 .build()
 
             val postRequest = Request.Builder()
-                .url("$baseUrl/search.do")
+                .url("$baseUrl/simpleSearchResults.do?action=firstPage")
                 .post(formBody)
                 .header("Referer", searchPageUrl)
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
                 .build()
 
-            val postHtml = client.newCall(postRequest).execute().use { it.body?.string() ?: "" }
-            parseSearchResults(Jsoup.parse(postHtml, baseUrl))
+            val html = client.newCall(postRequest).execute().use { it.body?.string() ?: "" }
+            parseSearchResults(Jsoup.parse(html, baseUrl))
         } catch (e: Exception) {
             emptyList()
         }
