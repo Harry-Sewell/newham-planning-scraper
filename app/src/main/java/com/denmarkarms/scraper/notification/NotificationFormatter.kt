@@ -60,12 +60,13 @@ object NotificationFormatter {
                 appendLine()
             }
             apptsByPerson.forEach { (person, appts) ->
-                val summary = appts.take(2).joinToString(", ") { apptRoleSummary(it.description) }
-                val extra = if (appts.size > 2) " (+${appts.size - 2} more)" else ""
+                val sorted = appts.sortedByDescending { it.description.substringAfter(" from ").trim() }
+                val summary = sorted.take(2).joinToString(", ") { apptRoleSummary(it.description) }
+                val extra = if (sorted.size > 2) " (+${sorted.size - 2} more)" else ""
                 appendLine("$person: ${appts.size} new appointment${if (appts.size != 1) "s" else ""}")
                 appendLine("$summary$extra")
                 val officerId = officerIdByName[person]
-                appendLine(if (officerId != null) "$CH_BASE/officers/$officerId/appointments" else "$CH_BASE/company/${appts.first().entityId}")
+                appendLine(if (officerId != null) "$CH_BASE/officers/$officerId/appointments" else "$CH_BASE/company/${sorted.first().entityId}")
                 appendLine()
             }
         }.trim()
@@ -141,7 +142,7 @@ object NotificationFormatter {
                 appendLine(sectionHeading("New Appointments (${appointments.size})"))
                 appendLine(tableOpen("Person", "Role", "Company", "Appointed", ""))
                 apptsByPerson.forEach { (person, appts) ->
-                    appts.forEach { c ->
+                    appts.sortedByDescending { it.description.substringAfter(" from ").trim() }.forEach { c ->
                         val role = c.description.substringAfter(" as ").substringBefore(" at ").trim()
                         val company = c.description.substringAfter(" at ").substringBefore(" (").trim()
                         val appointed = c.description.substringAfter(" from ").trim()
