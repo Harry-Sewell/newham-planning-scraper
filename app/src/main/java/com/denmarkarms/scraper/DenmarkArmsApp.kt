@@ -2,6 +2,7 @@ package com.denmarkarms.scraper
 
 import android.app.Application
 import androidx.work.*
+import com.denmarkarms.scraper.notification.LocalNotificationHelper
 import com.denmarkarms.scraper.worker.CompaniesHouseCheckWorker
 import com.denmarkarms.scraper.worker.PlanningCheckWorker
 import java.util.concurrent.TimeUnit
@@ -14,6 +15,7 @@ class DenmarkArmsApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        LocalNotificationHelper.createChannel(this)
         scheduleBackgroundWork()
     }
 

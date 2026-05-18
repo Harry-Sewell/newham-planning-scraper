@@ -33,6 +33,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun dismissEntry(entry: com.denmarkarms.scraper.data.db.entity.ChangeLogEntity) {
+        viewModelScope.launch {
+            container.db.changeLogDao().delete(entry)
+        }
+    }
+
     fun formatTimestamp(ts: Long): String =
         SimpleDateFormat("dd MMM yyyy HH:mm", Locale.UK).format(Date(ts))
 }

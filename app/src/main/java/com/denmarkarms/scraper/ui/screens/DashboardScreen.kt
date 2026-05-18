@@ -1,5 +1,7 @@
 package com.denmarkarms.scraper.ui.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -20,12 +23,11 @@ import com.denmarkarms.scraper.ui.viewmodel.DashboardViewModel
 @Composable
 fun DashboardScreen(vm: DashboardViewModel = viewModel()) {
     val changes by vm.recentChanges.collectAsState()
-    var refreshing by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Denmark Arms Scraper") },
+                title = { Text("Planning Scraper") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
@@ -85,11 +87,57 @@ fun DashboardScreen(vm: DashboardViewModel = viewModel()) {
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
-                items(changes) { entry ->
-                    ChangeCard(entry, vm.formatTimestamp(entry.timestamp))
+                items(changes, key = { it.id }) { entry ->
+                    SwipeToDismissChangeCard(
+                        entry = entry,
+                        formattedTime = vm.formatTimestamp(entry.timestamp),
+                        onDismiss = { vm.dismissEntry(entry) }
+                    )
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeToDismissChangeCard(
+    entry: ChangeLogEntity,
+    formattedTime: String,
+    onDismiss: () -> Unit
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) {
+                onDismiss()
+                true
+            } else false
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            val color by animateColorAsState(
+                targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart)
+                    MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.surfaceVariant,
+                label = "swipe_bg"
+            )
+            Box(
+                modifier = Modifier.fillMaxSize().background(color),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Dismiss",
+                    tint = Color.White,
+                    modifier = Modifier.padding(end = 20.dp)
+                )
+            }
+        },
+        enableDismissFromStartToEnd = false
+    ) {
+        ChangeCard(entry, formattedTime)
     }
 }
 
@@ -115,10 +163,7 @@ private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String) {
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    entry.description,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text(entry.description, style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(4.dp))
                 Text(
                     formattedTime,

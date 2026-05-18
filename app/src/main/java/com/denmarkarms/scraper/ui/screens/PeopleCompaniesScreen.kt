@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.denmarkarms.scraper.domain.Appointment
 import com.denmarkarms.scraper.domain.Person
+import com.denmarkarms.scraper.domain.SicCodes
 import com.denmarkarms.scraper.ui.viewmodel.PeopleViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -162,11 +163,13 @@ private fun AppointmentRow(apt: Appointment) {
                 color = MaterialTheme.colorScheme.outline
             )
             if (apt.natureOfBusiness.isNotBlank()) {
-                Text(
-                    "SIC: ${apt.natureOfBusiness}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
+                apt.natureOfBusiness.split(",").forEach { code ->
+                    Text(
+                        SicCodes.describe(code.trim()),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
             }
             if (apt.companyStatus.isNotBlank()) {
                 Text(
