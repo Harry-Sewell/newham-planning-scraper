@@ -30,22 +30,26 @@ fun AppNavigation() {
     val navBackStack by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStack?.destination?.route
 
+    val showBottomBar = currentRoute != "data_manager"
+
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                bottomNavItems.forEach { screen ->
-                    NavigationBarItem(
-                        selected = currentRoute == screen.route,
-                        onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(screen.icon, contentDescription = screen.label) },
-                        label = { Text(screen.label) }
-                    )
+            if (showBottomBar) {
+                NavigationBar {
+                    bottomNavItems.forEach { screen ->
+                        NavigationBarItem(
+                            selected = currentRoute == screen.route,
+                            onClick = {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = { Icon(screen.icon, contentDescription = screen.label) },
+                            label = { Text(screen.label) }
+                        )
+                    }
                 }
             }
         }
@@ -58,7 +62,12 @@ fun AppNavigation() {
             composable(Screen.Dashboard.route) { DashboardScreen() }
             composable(Screen.Planning.route) { PlanningTimelineScreen() }
             composable(Screen.People.route) { PeopleCompaniesScreen() }
-            composable(Screen.Config.route) { ConfigScreen() }
+            composable(Screen.Config.route) {
+                ConfigScreen(onNavigateToDataManager = { navController.navigate("data_manager") })
+            }
+            composable("data_manager") {
+                DataManagerScreen(onBack = { navController.popBackStack() })
+            }
         }
     }
 }

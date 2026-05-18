@@ -23,6 +23,9 @@ interface PlanningApplicationDao {
 
     @Delete
     suspend fun delete(app: PlanningApplicationEntity)
+
+    @Query("DELETE FROM planning_applications")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -35,6 +38,15 @@ interface PlanningDocumentDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(doc: PlanningDocumentEntity): Long
+
+    @Delete
+    suspend fun delete(doc: PlanningDocumentEntity)
+
+    @Query("DELETE FROM planning_documents WHERE application_key_val = :keyVal")
+    suspend fun deleteForApplication(keyVal: String)
+
+    @Query("DELETE FROM planning_documents")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -89,6 +101,12 @@ interface PersonDao {
 
     @Update
     suspend fun update(person: PersonEntity)
+
+    @Delete
+    suspend fun delete(person: PersonEntity)
+
+    @Query("DELETE FROM persons")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -107,6 +125,15 @@ interface AppointmentDao {
 
     @Update
     suspend fun update(appointment: AppointmentEntity)
+
+    @Delete
+    suspend fun delete(appointment: AppointmentEntity)
+
+    @Query("DELETE FROM appointments WHERE person_id = :personId")
+    suspend fun deleteForPerson(personId: Long)
+
+    @Query("DELETE FROM appointments")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -140,4 +167,10 @@ interface ChangeLogDao {
 
     @Query("DELETE FROM change_log WHERE timestamp < :before")
     suspend fun deleteOlderThan(before: Long)
+
+    @Delete
+    suspend fun delete(entry: ChangeLogEntity)
+
+    @Query("DELETE FROM change_log")
+    suspend fun deleteAll()
 }

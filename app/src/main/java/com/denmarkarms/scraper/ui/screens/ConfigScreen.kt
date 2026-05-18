@@ -25,7 +25,10 @@ import com.denmarkarms.scraper.ui.viewmodel.ConfigViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConfigScreen(vm: ConfigViewModel = viewModel()) {
+fun ConfigScreen(
+    onNavigateToDataManager: () -> Unit = {},
+    vm: ConfigViewModel = viewModel()
+) {
     val addresses by vm.monitoredAddresses.collectAsState()
     val persons by vm.monitoredPersons.collectAsState()
     val recipients by vm.recipients.collectAsState()
@@ -51,6 +54,7 @@ fun ConfigScreen(vm: ConfigViewModel = viewModel()) {
             item { RecipientSection(recipients, vm) }
             item { NotificationSettingsSection(vm) }
             item { ApiSettingsSection(vm) }
+            item { DataManagementSection(onNavigateToDataManager) }
             item { Spacer(Modifier.height(32.dp)) }
         }
     }
@@ -258,6 +262,26 @@ private fun NotificationSettingsSection(vm: ConfigViewModel) {
     OutlinedTextField(twilioFrom, { twilioFrom = it; vm.setPref(PrefsKeys.TWILIO_FROM_NUMBER, it) },
         label = { Text("Twilio WhatsApp From number (+1...)") }, modifier = Modifier.fillMaxWidth(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+}
+
+@Composable
+private fun DataManagementSection(onNavigate: () -> Unit) {
+    Spacer(Modifier.height(8.dp))
+    SectionHeader("Data Management")
+    Text(
+        "View and delete stored applications, people, and log entries. Useful for resetting test data.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.outline,
+        modifier = Modifier.padding(bottom = 8.dp)
+    )
+    OutlinedButton(
+        onClick = onNavigate,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Icon(Icons.Default.Storage, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("Manage Database Entries")
+    }
 }
 
 @Composable
