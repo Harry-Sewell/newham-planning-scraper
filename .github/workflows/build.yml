@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -29,10 +31,36 @@ jobs:
       - name: Build debug APK
         run: gradle :app:assembleDebug
 
-      - name: Upload APK
+      - name: Rename APK
+        run: |
+          BUILD_DATE=$(date -u '+%Y-%m-%d')
+          SHORT_SHA=${GITHUB_SHA::7}
+          mv app/build/outputs/apk/debug/app-debug.apk \
+             app/build/outputs/apk/debug/planning-scraper-${BUILD_DATE}-${SHORT_SHA}.apk
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: planning-scraper
+          path: app/build/outputs/apk/debug/planning-scraper-*.apk
           retention-days: 14
           if-no-files-found: error
+
+      - name: Publish release
+        if: github.event_name == 'push'
+        run: |
+          BUILD_DATE=$(date -u '+%Y-%m-%d')
+          SHORT_SHA=${GITHUB_SHA::7}
+          APK=app/build/outputs/apk/debug/planning-scraper-${BUILD_DATE}-${SHORT_SHA}.apk
+
+          gh release delete latest --yes 2>/dev/null || true
+          git tag -f latest
+          git push -f origin latest
+
+          gh release create latest \
+            --title "Planning Scraper · ${BUILD_DATE}" \
+            --notes "$(printf 'Built from commit %s on %s.\n\nInstall the APK directly on your Android device.' ${SHORT_SHA} "${BUILD_DATE}")" \
+            --prerelease \
+            "$APK"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
