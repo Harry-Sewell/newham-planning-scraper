@@ -1,8 +1,10 @@
 package com.denmarkarms.scraper.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -75,48 +77,62 @@ fun PlanningTimelineScreen(vm: PlanningViewModel = viewModel()) {
 private fun PlanningApplicationCard(app: PlanningApplication, firstSeen: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(8.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    app.reference,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                StatusChip(app.status)
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(app.description, style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Place,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.outline
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(app.address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-            }
-            Spacer(Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+            Column(modifier = Modifier.padding(12.dp).weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        app.reference.ifBlank { "Unknown ref" },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    StatusChip(app.status)
+                }
                 if (app.receivedDate.isNotBlank()) {
                     Text(
-                        "Received: ${app.receivedDate}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        "Registered: ${app.receivedDate}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(top = 2.dp)
                     )
                 }
+                if (app.description.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(app.description, style = MaterialTheme.typography.bodyMedium)
+                }
+                if (app.address.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Place,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            app.address,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
                 Text(
-                    "Found: $firstSeen",
+                    "First tracked: $firstSeen",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline
                 )

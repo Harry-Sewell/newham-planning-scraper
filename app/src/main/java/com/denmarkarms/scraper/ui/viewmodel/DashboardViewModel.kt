@@ -7,8 +7,10 @@ import com.denmarkarms.scraper.DenmarkArmsApp
 import com.denmarkarms.scraper.data.db.entity.ChangeLogEntity
 import com.denmarkarms.scraper.domain.ChangeLogEntry
 import com.denmarkarms.scraper.domain.ChangeType
+
 import com.denmarkarms.scraper.domain.Recipient
 import com.denmarkarms.scraper.notification.LocalNotificationHelper
+import com.denmarkarms.scraper.notification.NotificationFormatter
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -58,11 +60,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         try {
             val changes = container.planningRepository.checkAndUpdate()
             if (changes.isNotEmpty()) {
-                val title = "Planning: ${changes.size} new change${if (changes.size != 1) "s" else ""}"
-                val body = notificationBody(changes)
+                val subject = NotificationFormatter.planningSubject(changes)
+                val body = NotificationFormatter.planningBody(changes)
                 val url = changes.firstOrNull()?.let { planningUrl(it) }
-                LocalNotificationHelper.notify(getApplication(), 1001, title, body, url)
-                sendRemote(title, changes)
+                LocalNotificationHelper.notify(getApplication(), 1001, subject, body, url)
+                sendRemote(subject, body)
             }
         } catch (_: Exception) {}
     }
@@ -71,11 +73,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         try {
             val changes = container.companiesHouseRepository.checkAndUpdate()
             if (changes.isNotEmpty()) {
-                val title = "Companies House: ${changes.size} new change${if (changes.size != 1) "s" else ""}"
-                val body = notificationBody(changes)
+                val subject = NotificationFormatter.companiesHouseSubject(changes)
+                val body = NotificationFormatter.companiesHouseBody(changes)
                 val url = changes.firstOrNull()?.let { companiesHouseUrl(it) }
-                LocalNotificationHelper.notify(getApplication(), 1002, title, body, url)
-                sendRemote(title, changes)
+                LocalNotificationHelper.notify(getApplication(), 1002, subject, body, url)
+                sendRemote(subject, body)
             }
         } catch (_: Exception) {}
     }
@@ -87,21 +89,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun formatTimestamp(ts: Long): String =
         SimpleDateFormat("dd MMM yyyy HH:mm", Locale.UK).format(Date(ts))
 
-    private suspend fun sendRemote(subject: String, changes: List<ChangeLogEntry>) {
+    private suspend fun sendRemote(subject: String, body: String) {
         val recipients = container.db.recipientDao().getActiveOnce()
             .map { Recipient(it.id, it.type, it.value, it.active) }
         if (recipients.isEmpty()) return
-        val body = buildString {
-            appendLine(subject)
-            appendLine("=".repeat(40))
-            for (c in changes) { appendLine(); appendLine(c.description) }
-        }
         container.notificationSender.send(subject, body, recipients)
     }
-
-    private fun notificationBody(changes: List<ChangeLogEntry>): String =
-        changes.take(3).joinToString("\n") { "• ${it.description.take(80)}" } +
-            if (changes.size > 3) "\n…and ${changes.size - 3} more" else ""
 
     private fun planningUrl(c: ChangeLogEntry): String {
         val tab = if (c.type == ChangeType.NEW_DOCUMENT) "documents" else "summary"
