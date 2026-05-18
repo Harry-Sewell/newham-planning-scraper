@@ -7,6 +7,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import java.net.URLEncoder
 
 data class PlanningApplicationResult(
     val keyVal: String,
@@ -30,10 +31,20 @@ class NewhamPlanningService(private val client: OkHttpClient) {
     suspend fun searchApplications(address: String): List<PlanningApplicationResult> = withContext(Dispatchers.IO) {
         try {
             val searchPageUrl = "$baseUrl/search.do?action=simple&searchType=Application"
+            // Load the search page first to establish a session cookie
             val pageHtml = get(searchPageUrl)
-            val doc = Jsoup.parse(pageHtml)
-            val csrfToken = doc.select("input[name=_csrf]").attr("value")
+            val pageDoc = Jsoup.parse(pageHtml, searchPageUrl)
+            val csrfToken = pageDoc.select("input[name=_csrf]").attr("value")
 
+            // Idox portals reliably accept a GET with params — try this first
+            val encoded = URLEncoder.encode(address, "UTF-8")
+            val getUrl = "$baseUrl/search.do?action=Search&searchType=Application" +
+                "&searchCriteria.description=$encoded"
+            val getHtml = get(getUrl)
+            val getResults = parseSearchResults(Jsoup.parse(getHtml, baseUrl))
+            if (getResults.isNotEmpty()) return@withContext getResults
+
+            // Fallback: POST form submission
             val formBody = FormBody.Builder()
                 .add("searchCriteria.description", address)
                 .add("searchCriteria.searchType", "Application")
@@ -41,16 +52,15 @@ class NewhamPlanningService(private val client: OkHttpClient) {
                 .apply { if (csrfToken.isNotEmpty()) add("_csrf", csrfToken) }
                 .build()
 
-            val request = Request.Builder()
+            val postRequest = Request.Builder()
                 .url("$baseUrl/search.do")
                 .post(formBody)
                 .header("Referer", searchPageUrl)
-                .header("User-Agent", "Mozilla/5.0 (compatible; DenmarkArmsScraper/1.0)")
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
                 .build()
 
-            val response = client.newCall(request).execute()
-            val html = response.body?.string() ?: return@withContext emptyList()
-            parseSearchResults(Jsoup.parse(html))
+            val postHtml = client.newCall(postRequest).execute().use { it.body?.string() ?: "" }
+            parseSearchResults(Jsoup.parse(postHtml, baseUrl))
         } catch (e: Exception) {
             emptyList()
         }
@@ -81,35 +91,38 @@ class NewhamPlanningService(private val client: OkHttpClient) {
 
     private fun parseSearchResults(doc: Document): List<PlanningApplicationResult> {
         val results = mutableListOf<PlanningApplicationResult>()
-        // Idox planning portal result format
+
+        // Primary: Idox standard list format
         doc.select("li.searchresult").forEach { li ->
-            val link = li.selectFirst("a.summaryLink") ?: return@forEach
-            val href = link.attr("href")
-            val keyVal = extractKeyVal(href) ?: return@forEach
-            val reference = link.selectFirst("h3")?.text()?.trim() ?: ""
-            val description = link.select("p.description, .description").firstOrNull()?.text()?.trim() ?: ""
-            val address = link.select("p.address, .address").firstOrNull()?.text()?.trim() ?: ""
-            val metaText = li.select("p.metaInfo, .metaInfo, .status").text()
-            val status = extractField(metaText, "Status:") ?: extractField(metaText, "status") ?: ""
-            val receivedDate = extractField(metaText, "Received:") ?: extractField(metaText, "received") ?: ""
+            val link = li.selectFirst("a.summaryLink, a[href*=keyVal]") ?: return@forEach
+            val keyVal = extractKeyVal(link.attr("abs:href").ifBlank { link.attr("href") }) ?: return@forEach
+            val reference = li.selectFirst("h2, h3")?.text()?.trim() ?: ""
+            val description = li.select(".description, p.description").firstOrNull()?.text()?.trim() ?: ""
+            val address = li.select(".address, p.address").firstOrNull()?.text()?.trim() ?: ""
+            val metaText = li.select(".metaInfo, p.metaInfo, .searchresult-footer").text()
+            val status = extractField(metaText, "Status:") ?: ""
+            val receivedDate = extractField(metaText, "Received:") ?: ""
             results.add(PlanningApplicationResult(keyVal, reference, description, address, status.trim(), receivedDate.trim()))
         }
-        // Fallback: try table rows if list not found
+
+        // Fallback A: any anchor whose href contains keyVal (catches alternate Idox layouts)
         if (results.isEmpty()) {
-            doc.select("table.searchresults tr, table#searchresults tr").drop(1).forEach { row ->
+            doc.select("a[href*=keyVal]").forEach { link ->
+                val keyVal = extractKeyVal(link.attr("abs:href").ifBlank { link.attr("href") }) ?: return@forEach
+                if (results.any { it.keyVal == keyVal }) return@forEach
+                val row = link.closest("tr") ?: link.closest("li") ?: link.parent() ?: return@forEach
                 val cells = row.select("td")
-                if (cells.size >= 3) {
-                    val linkEl = row.selectFirst("a") ?: return@forEach
-                    val keyVal = extractKeyVal(linkEl.attr("href")) ?: return@forEach
-                    val reference = cells.getOrNull(0)?.text()?.trim() ?: ""
-                    val address = cells.getOrNull(1)?.text()?.trim() ?: ""
-                    val description = cells.getOrNull(2)?.text()?.trim() ?: ""
-                    val status = cells.getOrNull(3)?.text()?.trim() ?: ""
-                    val receivedDate = cells.getOrNull(4)?.text()?.trim() ?: ""
+                val reference = (link.selectFirst("h2, h3") ?: link).text().trim()
+                val description = cells.getOrNull(1)?.text()?.trim() ?: row.select(".description").text().trim()
+                val address = cells.getOrNull(2)?.text()?.trim() ?: row.select(".address").text().trim()
+                val status = cells.getOrNull(3)?.text()?.trim() ?: ""
+                val receivedDate = cells.getOrNull(4)?.text()?.trim() ?: ""
+                if (reference.isNotBlank() || description.isNotBlank()) {
                     results.add(PlanningApplicationResult(keyVal, reference, description, address, status, receivedDate))
                 }
             }
         }
+
         return results
     }
 

@@ -38,6 +38,9 @@ class CompaniesHouseService(private val client: OkHttpClient) {
             val items = root.getAsJsonArray("items") ?: return@withContext emptyList()
             items.mapNotNull { el ->
                 val obj = el.asJsonObject
+                // Only process officer results, not company name matches
+                val kind = obj.getString("kind") ?: ""
+                if (!kind.equals("searchresults#officer", ignoreCase = true)) return@mapNotNull null
                 val links = obj.getAsJsonObject("links") ?: return@mapNotNull null
                 val self = links.getString("self") ?: return@mapNotNull null
                 val officerId = self.removePrefix("/officers/").removeSuffix("/appointments")
