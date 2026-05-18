@@ -86,6 +86,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch { container.db.changeLogDao().delete(entry) }
     }
 
+    fun dismissAll() {
+        viewModelScope.launch { container.db.changeLogDao().deleteAll() }
+    }
+
     fun formatTimestamp(ts: Long): String =
         SimpleDateFormat("dd MMM yyyy HH:mm", Locale.UK).format(Date(ts))
 

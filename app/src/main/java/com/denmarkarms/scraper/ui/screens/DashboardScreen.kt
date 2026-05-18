@@ -70,6 +70,15 @@ fun DashboardScreen(vm: DashboardViewModel = viewModel()) {
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
+                    if (changes.isNotEmpty()) {
+                        IconButton(onClick = { vm.dismissAll() }) {
+                            Icon(
+                                Icons.Default.DeleteSweep,
+                                contentDescription = "Clear all",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
                     IconButton(
                         onClick = { vm.runChecks() },
                         enabled = !isChecking
