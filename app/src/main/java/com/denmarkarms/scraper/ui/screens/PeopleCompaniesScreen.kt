@@ -21,11 +21,21 @@ import com.denmarkarms.scraper.domain.Person
 import com.denmarkarms.scraper.domain.SicCodes
 import com.denmarkarms.scraper.ui.viewmodel.PeopleViewModel
 
+private fun shareJson(context: android.content.Context, json: String, filename: String) {
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, filename)
+        putExtra(Intent.EXTRA_TEXT, json)
+    }
+    context.startActivity(Intent.createChooser(intent, "Export JSON"))
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PeopleCompaniesScreen(vm: PeopleViewModel = viewModel()) {
     val persons by vm.persons.collectAsState()
     val appointments by vm.appointments.collectAsState()
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -34,7 +44,17 @@ fun PeopleCompaniesScreen(vm: PeopleViewModel = viewModel()) {
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                ),
+                actions = {
+                    if (persons.isNotEmpty()) {
+                        IconButton(onClick = {
+                            shareJson(context, vm.buildExportJson(persons, appointments), "people_companies.json")
+                        }) {
+                            Icon(Icons.Default.Share, contentDescription = "Export JSON",
+                                tint = MaterialTheme.colorScheme.onPrimary)
+                        }
+                    }
+                }
             )
         }
     ) { padding ->

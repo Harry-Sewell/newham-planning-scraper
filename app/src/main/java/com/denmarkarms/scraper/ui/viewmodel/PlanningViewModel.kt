@@ -5,6 +5,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.denmarkarms.scraper.DenmarkArmsApp
 import com.denmarkarms.scraper.domain.PlanningApplication
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -22,4 +25,19 @@ class PlanningViewModel(application: Application) : AndroidViewModel(application
 
     fun formatTimestamp(ts: Long): String =
         SimpleDateFormat("dd MMM yyyy HH:mm", Locale.UK).format(Date(ts))
+
+    fun buildExportJson(applications: List<PlanningApplication>): String {
+        val array = JsonArray()
+        applications.forEach { app ->
+            array.add(JsonObject().apply {
+                addProperty("reference", app.reference)
+                addProperty("description", app.description)
+                addProperty("address", app.address)
+                addProperty("status", app.status)
+                addProperty("receivedDate", app.receivedDate)
+                addProperty("url", "https://pa.newham.gov.uk/online-applications/applicationDetails.do?activeTab=summary&keyVal=${app.keyVal}")
+            })
+        }
+        return GsonBuilder().setPrettyPrinting().create().toJson(array)
+    }
 }

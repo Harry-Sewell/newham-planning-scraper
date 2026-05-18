@@ -22,10 +22,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.denmarkarms.scraper.domain.PlanningApplication
 import com.denmarkarms.scraper.ui.viewmodel.PlanningViewModel
 
+private fun shareJson(context: android.content.Context, json: String, filename: String) {
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, filename)
+        putExtra(Intent.EXTRA_TEXT, json)
+    }
+    context.startActivity(Intent.createChooser(intent, "Export JSON"))
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlanningTimelineScreen(vm: PlanningViewModel = viewModel()) {
     val applications by vm.applications.collectAsState()
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -34,7 +44,17 @@ fun PlanningTimelineScreen(vm: PlanningViewModel = viewModel()) {
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                ),
+                actions = {
+                    if (applications.isNotEmpty()) {
+                        IconButton(onClick = {
+                            shareJson(context, vm.buildExportJson(applications), "planning_applications.json")
+                        }) {
+                            Icon(Icons.Default.Share, contentDescription = "Export JSON",
+                                tint = MaterialTheme.colorScheme.onPrimary)
+                        }
+                    }
+                }
             )
         }
     ) { padding ->
