@@ -72,7 +72,6 @@ jobs:
           gh release create latest \
             --title "Planning Scraper · ${BUILD_DATE}" \
             --notes "$(printf 'Built from commit %s on %s.\n\nInstall the APK directly on your Android device.' ${SHORT_SHA} "${BUILD_DATE}")" \
-            --prerelease \
             "$APK"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
