@@ -81,6 +81,15 @@ fun PlanningTimelineScreen(vm: PlanningViewModel = viewModel()) {
 private fun PlanningApplicationCard(app: PlanningApplication, firstSeen: String) {
     val context = LocalContext.current
     val url = "https://pa.newham.gov.uk/online-applications/applicationDetails.do?activeTab=summary&keyVal=${app.keyVal}"
+    val refType = planningRefType(app.reference)
+    val subtitle = buildString {
+        if (refType.isNotBlank()) append(refType)
+        if (app.receivedDate.isNotBlank()) {
+            if (isNotEmpty()) append(" · ")
+            append("Validated: ${app.receivedDate}")
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth().clickable {
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -96,6 +105,7 @@ private fun PlanningApplicationCard(app: PlanningApplication, firstSeen: String)
                     .background(MaterialTheme.colorScheme.primary)
             )
             Column(modifier = Modifier.padding(12.dp).weight(1f)) {
+                // Primary: reference number + status
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -109,17 +119,23 @@ private fun PlanningApplicationCard(app: PlanningApplication, firstSeen: String)
                     )
                     StatusChip(app.status)
                 }
-                if (app.receivedDate.isNotBlank()) {
+                // Secondary: type name · validated date
+                if (subtitle.isNotBlank()) {
                     Text(
-                        "Registered: ${app.receivedDate}",
-                        style = MaterialTheme.typography.labelMedium,
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
+                // Detail: description text
                 if (app.description.isNotBlank()) {
                     Spacer(Modifier.height(8.dp))
-                    Text(app.description, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        app.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
                 if (app.address.isNotBlank()) {
                     Spacer(Modifier.height(6.dp))
@@ -127,7 +143,7 @@ private fun PlanningApplicationCard(app: PlanningApplication, firstSeen: String)
                         Icon(
                             Icons.Default.Place,
                             contentDescription = null,
-                            modifier = Modifier.size(14.dp),
+                            modifier = Modifier.size(13.dp),
                             tint = MaterialTheme.colorScheme.outline
                         )
                         Spacer(Modifier.width(4.dp))
@@ -146,6 +162,35 @@ private fun PlanningApplicationCard(app: PlanningApplication, firstSeen: String)
                 )
             }
         }
+    }
+}
+
+private fun planningRefType(reference: String): String {
+    val suffix = reference.substringAfterLast("/").uppercase().trim()
+    return when (suffix) {
+        "FUL" -> "Full Planning Application"
+        "LBC" -> "Listed Building Consent"
+        "LBD" -> "Listed Building Demolition"
+        "LDC", "LDCP" -> "Lawful Development Certificate (Proposed)"
+        "LDCE" -> "Lawful Development Certificate (Existing)"
+        "HH" -> "Householder Application"
+        "ADV" -> "Advertisement Consent"
+        "NMA" -> "Non-Material Amendment"
+        "PA" -> "Prior Approval"
+        "PAC" -> "Prior Approval Certificate"
+        "CON" -> "Conservation Area Consent"
+        "DEM" -> "Demolition in Conservation Area"
+        "TCA" -> "Tree in Conservation Area"
+        "TPO" -> "Tree Preservation Order"
+        "VAR", "S73" -> "Variation of Condition"
+        "OUT" -> "Outline Planning Application"
+        "RES" -> "Reserved Matters"
+        "PIP" -> "Permission in Principle"
+        "TDC" -> "Technical Details Consent"
+        "ENV" -> "Environmental Statement"
+        "HAZ" -> "Hazardous Substances Consent"
+        "OBJ" -> "Objection"
+        else -> ""
     }
 }
 

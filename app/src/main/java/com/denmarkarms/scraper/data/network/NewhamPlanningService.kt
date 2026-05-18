@@ -101,7 +101,7 @@ class NewhamPlanningService(private val client: OkHttpClient) {
             val address = li.select(".address, p.address").firstOrNull()?.text()?.trim() ?: ""
             val metaText = li.select(".metaInfo, p.metaInfo, .searchresult-footer, .metaData").text()
             val status = extractField(metaText, "Status:") ?: extractField(metaText, "Case Status:") ?: ""
-            val receivedDate = extractField(metaText, "Received:") ?: extractField(metaText, "Registered:") ?: extractField(metaText, "Valid:") ?: ""
+            val receivedDate = extractField(metaText, "Validated:") ?: extractField(metaText, "Received:") ?: extractField(metaText, "Registered:") ?: extractField(metaText, "Valid:") ?: ""
             results.add(PlanningApplicationResult(keyVal, reference, description, address, status.trim(), receivedDate.trim()))
         }
 
