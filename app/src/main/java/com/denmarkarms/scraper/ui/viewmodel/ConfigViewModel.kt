@@ -101,9 +101,9 @@ class ConfigViewModel(application: Application) : AndroidViewModel(application) 
         val waRecipients = allRecipients.filter { it.type == RecipientType.WHATSAPP }
 
         if (emailRecipients.isEmpty()) {
-            results.add("Email: no active recipients")
+            results.add("Email: no active recipients configured")
         } else {
-            results.add(container.notificationSender.sendTestEmail())
+            results.add(container.notificationSender.sendTestEmail(emailRecipients.map { it.value }))
         }
 
         if (waRecipients.isEmpty()) {

@@ -32,18 +32,23 @@ class NotificationSender(
         if (whatsappRecipients.isNotEmpty()) sendWhatsApp(body, whatsappRecipients.map { it.value })
     }
 
-    suspend fun sendTestEmail(): String = withContext(Dispatchers.IO) {
+    suspend fun sendTestEmail(toAddresses: List<String>): String = withContext(Dispatchers.IO) {
         val host = prefs.getString(PrefsKeys.SMTP_HOST, "") ?: ""
         val username = prefs.getString(PrefsKeys.SMTP_USERNAME, "") ?: ""
         val password = prefs.getString(PrefsKeys.SMTP_PASSWORD, "") ?: ""
-        if (host.isBlank() || username.isBlank() || password.isBlank()) return@withContext "SMTP not configured"
+        val missing = listOfNotNull(
+            "SMTP Host".takeIf { host.isBlank() },
+            "Username".takeIf { username.isBlank() },
+            "Password".takeIf { password.isBlank() }
+        )
+        if (missing.isNotEmpty()) return@withContext "Email: missing ${missing.joinToString(", ")} in Config"
         try {
             sendEmailInternal(
                 subject = "Test – Denmark Arms Scraper",
                 body = "This is a test. Email notifications are working.",
-                toAddresses = listOf(username)
+                toAddresses = toAddresses
             )
-            "Email sent to $username ✓"
+            "Email sent to ${toAddresses.joinToString(", ")} ✓"
         } catch (e: Exception) {
             "Email failed: ${e.message}"
         }
