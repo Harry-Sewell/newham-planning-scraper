@@ -36,6 +36,8 @@ fun DashboardScreen(vm: DashboardViewModel = viewModel()) {
     val changes by vm.recentChanges.collectAsState()
     val isChecking by vm.isChecking.collectAsState()
     val lastChecked by vm.lastChecked.collectAsState()
+    val monitoredAddresses by vm.monitoredAddresses.collectAsState()
+    val monitoredPersons by vm.monitoredPersons.collectAsState()
 
     val infiniteTransition = rememberInfiniteTransition(label = "spin")
     val rotationAngle by infiniteTransition.animateFloat(
@@ -101,23 +103,66 @@ fun DashboardScreen(vm: DashboardViewModel = viewModel()) {
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(32.dp)
+                ) {
                     Icon(
                         Icons.Default.Notifications,
                         contentDescription = null,
-                        modifier = Modifier.size(64.dp),
+                        modifier = Modifier.size(56.dp),
                         tint = MaterialTheme.colorScheme.outline
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
                         "No changes detected yet",
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.outline
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(16.dp))
+
+                    // Planning addresses
+                    if (monitoredAddresses.isEmpty()) {
+                        MonitorSummaryRow(Icons.Default.LocationCity, "No addresses configured — add some in Config")
+                    } else {
+                        MonitorSummaryRow(
+                            Icons.Default.LocationCity,
+                            "Monitoring ${monitoredAddresses.size} address${if (monitoredAddresses.size != 1) "es" else ""}"
+                        )
+                        monitoredAddresses.forEach { addr ->
+                            Text(
+                                "  • ${addr.address}" + if (!addr.active) " (paused)" else "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (addr.active) MaterialTheme.colorScheme.onSurface
+                                        else MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // People
+                    if (monitoredPersons.isEmpty()) {
+                        MonitorSummaryRow(Icons.Default.Person, "No people configured — add names in Config")
+                    } else {
+                        MonitorSummaryRow(
+                            Icons.Default.Person,
+                            "Monitoring ${monitoredPersons.size} person${if (monitoredPersons.size != 1) "s" else ""}"
+                        )
+                        monitoredPersons.forEach { person ->
+                            Text(
+                                "  • ${person.name}" + if (!person.active) " (paused)" else "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (person.active) MaterialTheme.colorScheme.onSurface
+                                        else MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
                     Text(
                         "Tap ↻ to run a check now",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
                 }
@@ -266,6 +311,15 @@ private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String, actionUrl:
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun MonitorSummaryRow(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.outline)
+        Spacer(Modifier.width(6.dp))
+        Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
     }
 }
 

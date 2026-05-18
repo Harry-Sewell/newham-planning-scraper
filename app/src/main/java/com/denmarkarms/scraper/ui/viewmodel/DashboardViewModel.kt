@@ -5,9 +5,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.denmarkarms.scraper.DenmarkArmsApp
 import com.denmarkarms.scraper.data.db.entity.ChangeLogEntity
+import com.denmarkarms.scraper.data.db.entity.MonitoredAddressEntity
+import com.denmarkarms.scraper.data.db.entity.MonitoredPersonEntity
 import com.denmarkarms.scraper.domain.ChangeLogEntry
 import com.denmarkarms.scraper.domain.ChangeType
-
 import com.denmarkarms.scraper.domain.Recipient
 import com.denmarkarms.scraper.notification.LocalNotificationHelper
 import com.denmarkarms.scraper.notification.NotificationFormatter
@@ -29,6 +30,14 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     val recentChanges: StateFlow<List<ChangeLogEntity>> =
         container.db.changeLogDao().getRecent()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val monitoredAddresses: StateFlow<List<MonitoredAddressEntity>> =
+        container.db.monitoredAddressDao().getAll()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val monitoredPersons: StateFlow<List<MonitoredPersonEntity>> =
+        container.db.monitoredPersonDao().getAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _isChecking = MutableStateFlow(false)
