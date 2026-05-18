@@ -1,5 +1,7 @@
 # Planning & Companies House Scraper
 
+[![Download APK](https://img.shields.io/github/v/release/Harry-Sewell/newham-planning-scraper?label=Download%20APK&color=blue)](https://github.com/Harry-Sewell/newham-planning-scraper/releases/latest)
+
 An Android app that monitors a local council's planning portal and Companies House for changes, sending email and/or WhatsApp alerts to a configurable list of recipients.
 
 ## What it does
