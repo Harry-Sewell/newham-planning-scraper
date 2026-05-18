@@ -88,6 +88,7 @@ class PlanningRepository(
         val freshDocs = service.getDocuments(keyVal)
         val knownDocs = db.planningDocumentDao().getForApplicationOnce(keyVal)
         val knownNames = knownDocs.map { it.name }.toSet()
+        val appRef = db.planningApplicationDao().findByKeyVal(keyVal)?.reference?.takeIf { it.isNotBlank() } ?: keyVal
 
         for (doc in freshDocs) {
             if (doc.name !in knownNames) {
@@ -102,7 +103,7 @@ class PlanningRepository(
                 )
                 val entry = ChangeLogEntry(
                     type = ChangeType.NEW_DOCUMENT,
-                    description = "New document for $keyVal: ${doc.name} (${doc.date})",
+                    description = "New document for $appRef ($keyVal): ${doc.name} (${doc.date})",
                     entityId = keyVal,
                     timestamp = now
                 )

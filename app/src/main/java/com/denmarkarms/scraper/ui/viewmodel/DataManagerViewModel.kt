@@ -21,6 +21,10 @@ class DataManagerViewModel(application: Application) : AndroidViewModel(applicat
         db.planningApplicationDao().getAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val documents: StateFlow<List<PlanningDocumentEntity>> =
+        db.planningDocumentDao().getAll()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val persons: StateFlow<List<PersonEntity>> =
         db.personDao().getAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -33,10 +37,14 @@ class DataManagerViewModel(application: Application) : AndroidViewModel(applicat
         db.changeLogDao().getRecent()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Planning applications
+    // Planning applications + documents
     fun deleteApplication(app: PlanningApplicationEntity) = viewModelScope.launch {
         db.planningDocumentDao().deleteForApplication(app.keyVal)
         db.planningApplicationDao().delete(app)
+    }
+
+    fun deleteDocument(doc: PlanningDocumentEntity) = viewModelScope.launch {
+        db.planningDocumentDao().delete(doc)
     }
 
     fun clearAllApplications() = viewModelScope.launch {

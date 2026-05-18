@@ -108,8 +108,9 @@ object NotificationFormatter {
                 appendLine(sectionHeading("New Documents ($total)"))
                 appendLine(tableOpen("Application", "New Documents", ""))
                 docsByApp.forEach { (keyVal, docs) ->
+                    val ref = docs.mapNotNull { planningRef(it) }.firstOrNull() ?: keyVal
                     val url = "$NEWHAM_BASE?activeTab=documents&keyVal=$keyVal"
-                    appendLine(tr(td(keyVal, bold = true), td("${docs.size} new document${if (docs.size != 1) "s" else ""}"), tdLink(url, "View →")))
+                    appendLine(tr(td(ref, bold = true), td("${docs.size} new document${if (docs.size != 1) "s" else ""}"), tdLink(url, "View →")))
                 }
                 appendLine("</table>")
             }
@@ -192,6 +193,7 @@ object NotificationFormatter {
     private fun planningRef(change: ChangeLogEntry): String? = when (change.type) {
         ChangeType.NEW_APPLICATION -> change.description.substringAfter("New planning application ").substringBefore(":").trim().takeIf { it.isNotBlank() }
         ChangeType.STATUS_CHANGE -> change.description.substringAfter("Status changed for ").substringBefore(":").trim().takeIf { it.isNotBlank() }
+        ChangeType.NEW_DOCUMENT -> change.description.substringAfter("New document for ").substringBefore(" (").trim().takeIf { it.isNotBlank() && it.contains("/") }
         else -> null
     }
 

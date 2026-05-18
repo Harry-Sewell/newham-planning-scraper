@@ -25,6 +25,7 @@ fun DataManagerScreen(
     var selectedTab by remember { mutableStateOf(0) }
 
     val applications by vm.applications.collectAsState()
+    val documents by vm.documents.collectAsState()
     val persons by vm.persons.collectAsState()
     val appointments by vm.appointments.collectAsState()
     val changeLog by vm.changeLog.collectAsState()
@@ -58,7 +59,7 @@ fun DataManagerScreen(
             }
 
             when (selectedTab) {
-                0 -> ApplicationsTab(applications, vm)
+                0 -> ApplicationsTab(applications, documents, vm)
                 1 -> PeopleTab(persons, appointments, vm)
                 2 -> ChangeLogTab(changeLog, vm)
             }
@@ -69,6 +70,7 @@ fun DataManagerScreen(
 @Composable
 private fun ApplicationsTab(
     applications: List<PlanningApplicationEntity>,
+    documents: List<PlanningDocumentEntity>,
     vm: DataManagerViewModel
 ) {
     var showClearConfirm by remember { mutableStateOf(false) }
@@ -98,21 +100,50 @@ private fun ApplicationsTab(
             item { EmptyHint("No planning applications stored") }
         }
         items(applications, key = { it.id }) { app ->
-            DismissibleCard(
-                onDelete = { vm.deleteApplication(app) }
-            ) {
+            val appDocs = documents.filter { it.applicationKeyVal == app.keyVal }
+            DismissibleCard(onDelete = { vm.deleteApplication(app) }) {
                 Column {
-                    Text(app.reference, style = MaterialTheme.typography.labelMedium,
+                    Text(app.reference.ifBlank { app.keyVal },
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Text(app.description.take(80) + if (app.description.length > 80) "…" else "",
                         style = MaterialTheme.typography.bodySmall)
                     Text(app.status, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline)
-                    Text("keyVal: ${app.keyVal}", style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline)
                     Text("First seen: ${vm.formatTimestamp(app.firstSeen)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline)
+
+                    if (appDocs.isNotEmpty()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text("Documents (${appDocs.size}):",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold)
+                        appDocs.forEach { doc ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("• ${doc.name}",
+                                        style = MaterialTheme.typography.labelSmall)
+                                    if (doc.date.isNotBlank()) {
+                                        Text(doc.date,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.outline)
+                                    }
+                                }
+                                IconButton(
+                                    onClick = { vm.deleteDocument(doc) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = "Delete document",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

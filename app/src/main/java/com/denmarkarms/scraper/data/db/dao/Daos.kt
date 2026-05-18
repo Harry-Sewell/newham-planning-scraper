@@ -30,6 +30,9 @@ interface PlanningApplicationDao {
 
 @Dao
 interface PlanningDocumentDao {
+    @Query("SELECT * FROM planning_documents ORDER BY first_seen DESC")
+    fun getAll(): Flow<List<PlanningDocumentEntity>>
+
     @Query("SELECT * FROM planning_documents WHERE application_key_val = :keyVal ORDER BY first_seen DESC")
     fun getForApplication(keyVal: String): Flow<List<PlanningDocumentEntity>>
 
