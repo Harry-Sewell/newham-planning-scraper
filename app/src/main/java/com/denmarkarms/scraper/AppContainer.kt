@@ -8,8 +8,10 @@ import com.denmarkarms.scraper.data.network.NewhamPlanningService
 import com.denmarkarms.scraper.data.repository.CompaniesHouseRepository
 import com.denmarkarms.scraper.data.repository.PlanningRepository
 import com.denmarkarms.scraper.notification.NotificationSender
+import okhttp3.Cookie
+import okhttp3.CookieJar
+import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
-import java.net.CookieManager
 import java.util.concurrent.TimeUnit
 
 class AppContainer(context: Context) {
@@ -19,7 +21,11 @@ class AppContainer(context: Context) {
     val prefs: SharedPreferences = context.getSharedPreferences("denmark_arms_prefs", Context.MODE_PRIVATE)
 
     val httpClient: OkHttpClient = OkHttpClient.Builder()
-        .cookieJar(okhttp3.JavaNetCookieJar(CookieManager()))
+        .cookieJar(object : CookieJar {
+            private val store = mutableMapOf<String, List<Cookie>>()
+            override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) { store[url.host] = cookies }
+            override fun loadForRequest(url: HttpUrl): List<Cookie> = store[url.host] ?: emptyList()
+        })
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
