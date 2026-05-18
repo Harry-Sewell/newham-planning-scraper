@@ -76,7 +76,9 @@ fun PeopleCompaniesScreen(vm: PeopleViewModel = viewModel()) {
                         )
                     }
                     items(persons) { person ->
-                        val personAppointments = appointments.filter { it.personId == person.id }
+                        val personAppointments = appointments
+                            .filter { it.personId == person.id }
+                            .sortedWith(compareBy<Appointment> { it.resignedOn.isNotBlank() }.thenByDescending { it.appointedOn })
                         PersonCard(person, personAppointments, vm.formatTimestamp(person.firstSeen))
                     }
                 }
