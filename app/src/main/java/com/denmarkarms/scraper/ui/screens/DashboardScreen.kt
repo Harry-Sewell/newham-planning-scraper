@@ -3,6 +3,11 @@ package com.denmarkarms.scraper.ui.screens
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -28,24 +34,53 @@ import com.denmarkarms.scraper.ui.viewmodel.DashboardViewModel
 @Composable
 fun DashboardScreen(vm: DashboardViewModel = viewModel()) {
     val changes by vm.recentChanges.collectAsState()
+    val isChecking by vm.isChecking.collectAsState()
+    val lastChecked by vm.lastChecked.collectAsState()
+
+    val infiniteTransition = rememberInfiniteTransition(label = "spin")
+    val rotationAngle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing)),
+        label = "rotation"
+    )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Planning Scraper") },
+                title = {
+                    Column {
+                        Text("Planning Scraper")
+                        val subtitle = when {
+                            isChecking -> "Checking…"
+                            lastChecked != null -> "Updated ${vm.formatTimestamp(lastChecked!!)}"
+                            else -> null
+                        }
+                        if (subtitle != null) {
+                            Text(
+                                subtitle,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f)
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
-                    IconButton(onClick = {
-                        vm.runPlanningCheck()
-                        vm.runCompaniesHouseCheck()
-                    }) {
+                    IconButton(
+                        onClick = { vm.runChecks() },
+                        enabled = !isChecking
+                    ) {
                         Icon(
                             Icons.Default.Refresh,
                             contentDescription = "Run checks now",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.graphicsLayer {
+                                rotationZ = if (isChecking) rotationAngle else 0f
+                            }
                         )
                     }
                 }
