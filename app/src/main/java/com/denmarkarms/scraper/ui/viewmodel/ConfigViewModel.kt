@@ -23,6 +23,20 @@ class ConfigViewModel(application: Application) : AndroidViewModel(application) 
     private val prefs = container.prefs
     private val db = container.db
 
+    init {
+        // Persist UI defaults so NotificationSender sees them even if the user never edits the field
+        val defaults = mapOf(
+            PrefsKeys.SMTP_HOST to "smtp.gmail.com",
+            PrefsKeys.SMTP_PORT to "587",
+            PrefsKeys.SMTP_FROM_NAME to "Denmark Arms Scraper"
+        )
+        val editor = prefs.edit()
+        defaults.forEach { (key, default) ->
+            if (prefs.getString(key, "").isNullOrBlank()) editor.putString(key, default)
+        }
+        editor.apply()
+    }
+
     val monitoredAddresses: StateFlow<List<MonitoredAddress>> =
         planningRepo.monitoredAddresses
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
