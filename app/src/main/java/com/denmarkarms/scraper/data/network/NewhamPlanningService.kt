@@ -88,24 +88,34 @@ class NewhamPlanningService(private val client: OkHttpClient) {
         doc.select("li.searchresult").forEach { li ->
             val link = li.selectFirst("a.summaryLink, a[href*=keyVal]") ?: return@forEach
             val keyVal = extractKeyVal(link.attr("abs:href").ifBlank { link.attr("href") }) ?: return@forEach
-            val reference = li.selectFirst("h2, h3")?.text()?.trim() ?: ""
-            val description = li.select(".description, p.description").firstOrNull()?.text()?.trim() ?: ""
+
+            // Idox often encodes both reference and description in the link text: "23/01234/FUL - Change of use..."
+            val linkText = link.text().trim()
+            val reference = linkText.substringBefore(" - ").trim()
+                .ifBlank { li.selectFirst("h2, h3")?.text()?.trim() ?: "" }
+            val descFromLink = if (linkText.contains(" - ")) linkText.substringAfter(" - ").trim() else ""
+            val description = descFromLink.ifBlank {
+                li.select(".description, p.description, .descriptionWrap").firstOrNull()?.text()?.trim() ?: ""
+            }
+
             val address = li.select(".address, p.address").firstOrNull()?.text()?.trim() ?: ""
-            val metaText = li.select(".metaInfo, p.metaInfo, .searchresult-footer").text()
-            val status = extractField(metaText, "Status:") ?: ""
-            val receivedDate = extractField(metaText, "Received:") ?: ""
+            val metaText = li.select(".metaInfo, p.metaInfo, .searchresult-footer, .metaData").text()
+            val status = extractField(metaText, "Status:") ?: extractField(metaText, "Case Status:") ?: ""
+            val receivedDate = extractField(metaText, "Received:") ?: extractField(metaText, "Registered:") ?: extractField(metaText, "Valid:") ?: ""
             results.add(PlanningApplicationResult(keyVal, reference, description, address, status.trim(), receivedDate.trim()))
         }
 
-        // Fallback A: any anchor whose href contains keyVal (catches alternate Idox layouts)
+        // Fallback: any anchor whose href contains keyVal (catches alternate Idox layouts)
         if (results.isEmpty()) {
             doc.select("a[href*=keyVal]").forEach { link ->
                 val keyVal = extractKeyVal(link.attr("abs:href").ifBlank { link.attr("href") }) ?: return@forEach
                 if (results.any { it.keyVal == keyVal }) return@forEach
                 val row = link.closest("tr") ?: link.closest("li") ?: link.parent() ?: return@forEach
                 val cells = row.select("td")
-                val reference = (link.selectFirst("h2, h3") ?: link).text().trim()
-                val description = cells.getOrNull(1)?.text()?.trim() ?: row.select(".description").text().trim()
+                val linkText = link.text().trim()
+                val reference = linkText.substringBefore(" - ").trim().ifBlank { linkText }
+                val description = if (linkText.contains(" - ")) linkText.substringAfter(" - ").trim()
+                    else cells.getOrNull(1)?.text()?.trim() ?: row.select(".description").text().trim()
                 val address = cells.getOrNull(2)?.text()?.trim() ?: row.select(".address").text().trim()
                 val status = cells.getOrNull(3)?.text()?.trim() ?: ""
                 val receivedDate = cells.getOrNull(4)?.text()?.trim() ?: ""

@@ -1,7 +1,10 @@
 package com.denmarkarms.scraper.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -92,7 +96,8 @@ fun DashboardScreen(vm: DashboardViewModel = viewModel()) {
                     SwipeToDismissChangeCard(
                         entry = entry,
                         formattedTime = vm.formatTimestamp(entry.timestamp),
-                        onDismiss = { vm.dismissEntry(entry) }
+                        onDismiss = { vm.dismissEntry(entry) },
+                        actionUrl = changeUrl(entry)
                     )
                 }
             }
@@ -100,12 +105,25 @@ fun DashboardScreen(vm: DashboardViewModel = viewModel()) {
     }
 }
 
+private fun changeUrl(entry: ChangeLogEntity): String? = when (entry.type) {
+    ChangeType.NEW_APPLICATION, ChangeType.STATUS_CHANGE ->
+        "https://pa.newham.gov.uk/online-applications/applicationDetails.do?activeTab=summary&keyVal=${entry.entityId}"
+    ChangeType.NEW_DOCUMENT ->
+        "https://pa.newham.gov.uk/online-applications/applicationDetails.do?activeTab=documents&keyVal=${entry.entityId}"
+    ChangeType.NEW_PERSON ->
+        "https://find-and-update.company-information.service.gov.uk/officers/${entry.entityId}/appointments"
+    ChangeType.NEW_APPOINTMENT ->
+        "https://find-and-update.company-information.service.gov.uk/company/${entry.entityId}"
+    else -> null
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeToDismissChangeCard(
     entry: ChangeLogEntity,
     formattedTime: String,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    actionUrl: String? = null
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -138,12 +156,13 @@ private fun SwipeToDismissChangeCard(
         },
         enableDismissFromStartToEnd = false
     ) {
-        ChangeCard(entry, formattedTime)
+        ChangeCard(entry, formattedTime, actionUrl)
     }
 }
 
 @Composable
-private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String) {
+private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String, actionUrl: String? = null) {
+    val context = LocalContext.current
     val (icon, accentColor, label) = when (entry.type) {
         ChangeType.NEW_APPLICATION -> Triple(Icons.Default.AddCircle, MaterialTheme.colorScheme.primary, "New Application")
         ChangeType.NEW_DOCUMENT -> Triple(Icons.Default.Description, MaterialTheme.colorScheme.secondary, "New Document")
@@ -154,7 +173,11 @@ private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String) {
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().then(
+            if (actionUrl != null) Modifier.clickable {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(actionUrl)))
+            } else Modifier
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(8.dp)
     ) {

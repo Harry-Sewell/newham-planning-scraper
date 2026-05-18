@@ -75,7 +75,11 @@ fun PeopleCompaniesScreen(vm: PeopleViewModel = viewModel()) {
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
                     }
-                    items(persons) { person ->
+                    items(persons.sortedByDescending { person ->
+                        appointments
+                            .filter { it.personId == person.id }
+                            .maxOfOrNull { it.appointedOn } ?: "0000-00-00"
+                    }) { person ->
                         val personAppointments = appointments
                             .filter { it.personId == person.id }
                             .sortedWith(compareBy<Appointment> { it.resignedOn.isNotBlank() }.thenByDescending { it.appointedOn })
