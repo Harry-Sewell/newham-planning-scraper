@@ -32,6 +32,15 @@ fun ConfigScreen(
     val addresses by vm.monitoredAddresses.collectAsState()
     val persons by vm.monitoredPersons.collectAsState()
     val recipients by vm.recipients.collectAsState()
+    val testStatus by vm.testStatus.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(testStatus) {
+        if (!testStatus.isNullOrEmpty() && testStatus != "Sending…") {
+            snackbarHostState.showSnackbar(testStatus!!, duration = SnackbarDuration.Long)
+            vm.clearTestStatus()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -42,7 +51,8 @@ fun ConfigScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
@@ -52,7 +62,7 @@ fun ConfigScreen(
             item { AddressSection(addresses, vm) }
             item { PersonSection(persons, vm) }
             item { RecipientSection(recipients, vm) }
-            item { NotificationSettingsSection(vm) }
+            item { NotificationSettingsSection(vm, testStatus) }
             item { ApiSettingsSection(vm) }
             item { DataManagementSection(onNavigateToDataManager) }
             item { Spacer(Modifier.height(32.dp)) }
@@ -213,7 +223,7 @@ private fun RecipientSection(recipients: List<Recipient>, vm: ConfigViewModel) {
 }
 
 @Composable
-private fun NotificationSettingsSection(vm: ConfigViewModel) {
+private fun NotificationSettingsSection(vm: ConfigViewModel, testStatus: String?) {
     var smtpHost by remember { mutableStateOf(vm.getPref(PrefsKeys.SMTP_HOST, "smtp.gmail.com")) }
     var smtpPort by remember { mutableStateOf(vm.getPref(PrefsKeys.SMTP_PORT, "587")) }
     var smtpUser by remember { mutableStateOf(vm.getPref(PrefsKeys.SMTP_USERNAME)) }
@@ -262,6 +272,17 @@ private fun NotificationSettingsSection(vm: ConfigViewModel) {
     OutlinedTextField(twilioFrom, { twilioFrom = it; vm.setPref(PrefsKeys.TWILIO_FROM_NUMBER, it) },
         label = { Text("Twilio WhatsApp From number (+1...)") }, modifier = Modifier.fillMaxWidth(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+
+    Spacer(Modifier.height(16.dp))
+    Button(
+        onClick = { vm.sendTestNotification() },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = testStatus != "Sending…"
+    ) {
+        Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(if (testStatus == "Sending…") "Sending…" else "Send test notification")
+    }
 }
 
 @Composable

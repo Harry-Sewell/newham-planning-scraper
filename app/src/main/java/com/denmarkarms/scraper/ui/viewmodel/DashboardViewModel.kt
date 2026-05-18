@@ -5,6 +5,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.denmarkarms.scraper.DenmarkArmsApp
 import com.denmarkarms.scraper.data.db.entity.ChangeLogEntity
+import com.denmarkarms.scraper.domain.ChangeLogEntry
+import com.denmarkarms.scraper.domain.ChangeType
+import com.denmarkarms.scraper.domain.Recipient
+import com.denmarkarms.scraper.notification.LocalNotificationHelper
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -23,17 +27,35 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun runPlanningCheck() {
         viewModelScope.launch {
-            try { container.planningRepository.checkAndUpdate() } catch (_: Exception) {}
+            try {
+                val changes = container.planningRepository.checkAndUpdate()
+                if (changes.isNotEmpty()) {
+                    val title = "Planning: ${changes.size} new change${if (changes.size != 1) "s" else ""}"
+                    val body = notificationBody(changes)
+                    val url = changes.firstOrNull()?.let { planningUrl(it) }
+                    LocalNotificationHelper.notify(getApplication(), 1001, title, body, url)
+                    sendRemote(title, changes)
+                }
+            } catch (_: Exception) {}
         }
     }
 
     fun runCompaniesHouseCheck() {
         viewModelScope.launch {
-            try { container.companiesHouseRepository.checkAndUpdate() } catch (_: Exception) {}
+            try {
+                val changes = container.companiesHouseRepository.checkAndUpdate()
+                if (changes.isNotEmpty()) {
+                    val title = "Companies House: ${changes.size} new change${if (changes.size != 1) "s" else ""}"
+                    val body = notificationBody(changes)
+                    val url = changes.firstOrNull()?.let { companiesHouseUrl(it) }
+                    LocalNotificationHelper.notify(getApplication(), 1002, title, body, url)
+                    sendRemote(title, changes)
+                }
+            } catch (_: Exception) {}
         }
     }
 
-    fun dismissEntry(entry: com.denmarkarms.scraper.data.db.entity.ChangeLogEntity) {
+    fun dismissEntry(entry: ChangeLogEntity) {
         viewModelScope.launch {
             container.db.changeLogDao().delete(entry)
         }
@@ -41,4 +63,31 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun formatTimestamp(ts: Long): String =
         SimpleDateFormat("dd MMM yyyy HH:mm", Locale.UK).format(Date(ts))
+
+    private suspend fun sendRemote(subject: String, changes: List<ChangeLogEntry>) {
+        val recipients = container.db.recipientDao().getActiveOnce()
+            .map { Recipient(it.id, it.type, it.value, it.active) }
+        if (recipients.isEmpty()) return
+        val body = buildString {
+            appendLine(subject)
+            appendLine("=".repeat(40))
+            for (c in changes) { appendLine(); appendLine(c.description) }
+        }
+        container.notificationSender.send(subject, body, recipients)
+    }
+
+    private fun notificationBody(changes: List<ChangeLogEntry>): String =
+        changes.take(3).joinToString("\n") { "• ${it.description.take(80)}" } +
+            if (changes.size > 3) "\n…and ${changes.size - 3} more" else ""
+
+    private fun planningUrl(c: ChangeLogEntry): String {
+        val tab = if (c.type == ChangeType.NEW_DOCUMENT) "documents" else "summary"
+        return "https://pa.newham.gov.uk/online-applications/applicationDetails.do?activeTab=$tab&keyVal=${c.entityId}"
+    }
+
+    private fun companiesHouseUrl(c: ChangeLogEntry): String =
+        if (c.type == ChangeType.NEW_PERSON)
+            "https://find-and-update.company-information.service.gov.uk/officers/${c.entityId}/appointments"
+        else
+            "https://find-and-update.company-information.service.gov.uk/company/${c.entityId}"
 }

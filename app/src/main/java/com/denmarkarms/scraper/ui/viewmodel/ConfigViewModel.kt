@@ -6,8 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.denmarkarms.scraper.DenmarkArmsApp
 import com.denmarkarms.scraper.data.db.entity.RecipientEntity
 import com.denmarkarms.scraper.domain.*
+import com.denmarkarms.scraper.notification.LocalNotificationHelper
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -76,4 +79,41 @@ class ConfigViewModel(application: Application) : AndroidViewModel(application) 
     fun setPref(key: String, value: String) {
         prefs.edit().putString(key, value).apply()
     }
+
+    private val _testStatus = MutableStateFlow<String?>(null)
+    val testStatus: StateFlow<String?> = _testStatus.asStateFlow()
+
+    fun sendTestNotification() = viewModelScope.launch {
+        _testStatus.value = "Sending…"
+        val results = mutableListOf<String>()
+
+        LocalNotificationHelper.notify(
+            getApplication(), id = 9000,
+            title = "Test – Denmark Arms Scraper",
+            body = "Push notifications are working correctly."
+        )
+        results.add("Push: sent ✓")
+
+        val allRecipients = db.recipientDao().getActiveOnce()
+            .map { Recipient(it.id, it.type, it.value, it.active) }
+
+        val emailRecipients = allRecipients.filter { it.type == RecipientType.EMAIL }
+        val waRecipients = allRecipients.filter { it.type == RecipientType.WHATSAPP }
+
+        if (emailRecipients.isEmpty()) {
+            results.add("Email: no active recipients")
+        } else {
+            results.add(container.notificationSender.sendTestEmail())
+        }
+
+        if (waRecipients.isEmpty()) {
+            results.add("WhatsApp: no active recipients")
+        } else {
+            results.add(container.notificationSender.sendTestWhatsApp(waRecipients.map { it.value }))
+        }
+
+        _testStatus.value = results.joinToString("\n")
+    }
+
+    fun clearTestStatus() { _testStatus.value = null }
 }
