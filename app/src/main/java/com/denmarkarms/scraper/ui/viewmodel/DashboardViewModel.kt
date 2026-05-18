@@ -64,7 +64,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 val body = NotificationFormatter.planningBody(changes)
                 val url = changes.firstOrNull()?.let { planningUrl(it) }
                 LocalNotificationHelper.notify(getApplication(), 1001, subject, body, url)
-                sendRemote(subject, body)
+                sendRemote(subject, body, NotificationFormatter.planningHtmlBody(changes))
             }
         } catch (_: Exception) {}
     }
@@ -77,7 +77,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 val body = NotificationFormatter.companiesHouseBody(changes)
                 val url = changes.firstOrNull()?.let { companiesHouseUrl(it) }
                 LocalNotificationHelper.notify(getApplication(), 1002, subject, body, url)
-                sendRemote(subject, body)
+                sendRemote(subject, body, NotificationFormatter.companiesHouseHtmlBody(changes))
             }
         } catch (_: Exception) {}
     }
@@ -89,11 +89,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun formatTimestamp(ts: Long): String =
         SimpleDateFormat("dd MMM yyyy HH:mm", Locale.UK).format(Date(ts))
 
-    private suspend fun sendRemote(subject: String, body: String) {
+    private suspend fun sendRemote(subject: String, body: String, htmlBody: String? = null) {
         val recipients = container.db.recipientDao().getActiveOnce()
             .map { Recipient(it.id, it.type, it.value, it.active) }
         if (recipients.isEmpty()) return
-        container.notificationSender.send(subject, body, recipients)
+        container.notificationSender.send(subject, body, recipients, htmlBody)
     }
 
     private fun planningUrl(c: ChangeLogEntry): String {

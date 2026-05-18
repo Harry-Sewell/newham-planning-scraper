@@ -26,7 +26,8 @@ class CompaniesHouseCheckWorker(context: Context, params: WorkerParameters) : Co
                 val recipients = container.db.recipientDao().getActiveOnce()
                     .map { Recipient(it.id, it.type, it.value, it.active) }
                 if (recipients.isNotEmpty()) {
-                    container.notificationSender.send(subject, body, recipients)
+                    container.notificationSender.send(subject, body, recipients,
+                        htmlBody = NotificationFormatter.companiesHouseHtmlBody(changes))
                 }
             }
             Result.success()

@@ -17,18 +17,20 @@ import javax.mail.PasswordAuthentication
 import javax.mail.Session
 import javax.mail.Transport
 import javax.mail.internet.InternetAddress
+import javax.mail.internet.MimeBodyPart
 import javax.mail.internet.MimeMessage
+import javax.mail.internet.MimeMultipart
 
 class NotificationSender(
     private val prefs: SharedPreferences,
     private val httpClient: OkHttpClient
 ) {
-    suspend fun send(subject: String, body: String, recipients: List<Recipient>) {
+    suspend fun send(subject: String, body: String, recipients: List<Recipient>, htmlBody: String? = null) {
         if (recipients.isEmpty()) return
         val emailRecipients = recipients.filter { it.active && it.type == RecipientType.EMAIL }
         val whatsappRecipients = recipients.filter { it.active && it.type == RecipientType.WHATSAPP }
 
-        if (emailRecipients.isNotEmpty()) sendEmail(subject, body, emailRecipients.map { it.value })
+        if (emailRecipients.isNotEmpty()) sendEmail(subject, body, emailRecipients.map { it.value }, htmlBody)
         if (whatsappRecipients.isNotEmpty()) sendWhatsApp(body, whatsappRecipients.map { it.value })
     }
 
@@ -67,15 +69,15 @@ class NotificationSender(
         }
     }
 
-    private suspend fun sendEmail(subject: String, body: String, toAddresses: List<String>) = withContext(Dispatchers.IO) {
+    private suspend fun sendEmail(subject: String, body: String, toAddresses: List<String>, htmlBody: String? = null) = withContext(Dispatchers.IO) {
         val host = prefs.getString(PrefsKeys.SMTP_HOST, "") ?: ""
         val username = prefs.getString(PrefsKeys.SMTP_USERNAME, "") ?: ""
         val password = prefs.getString(PrefsKeys.SMTP_PASSWORD, "") ?: ""
         if (host.isBlank() || username.isBlank() || password.isBlank()) return@withContext
-        try { sendEmailInternal(subject, body, toAddresses) } catch (_: Exception) {}
+        try { sendEmailInternal(subject, body, toAddresses, htmlBody) } catch (_: Exception) {}
     }
 
-    private fun sendEmailInternal(subject: String, body: String, toAddresses: List<String>) {
+    private fun sendEmailInternal(subject: String, body: String, toAddresses: List<String>, htmlBody: String? = null) {
         val host = prefs.getString(PrefsKeys.SMTP_HOST, "") ?: ""
         val port = prefs.getString(PrefsKeys.SMTP_PORT, "587") ?: "587"
         val username = prefs.getString(PrefsKeys.SMTP_USERNAME, "") ?: ""
@@ -98,7 +100,14 @@ class NotificationSender(
             setFrom(InternetAddress(username, fromName))
             setRecipients(Message.RecipientType.TO, toAddresses.joinToString(","))
             setSubject(subject, "UTF-8")
-            setText(body, "UTF-8")
+            if (htmlBody != null) {
+                val multipart = MimeMultipart("alternative")
+                multipart.addBodyPart(MimeBodyPart().apply { setText(body, "UTF-8") })
+                multipart.addBodyPart(MimeBodyPart().apply { setContent(htmlBody, "text/html; charset=UTF-8") })
+                setContent(multipart)
+            } else {
+                setText(body, "UTF-8")
+            }
         }
         Transport.send(message)
     }

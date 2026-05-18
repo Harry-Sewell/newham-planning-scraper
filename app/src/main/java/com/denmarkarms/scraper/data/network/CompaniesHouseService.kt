@@ -41,12 +41,15 @@ class CompaniesHouseService(private val client: OkHttpClient) {
                 // Only process officer results, not company name matches
                 val kind = obj.getString("kind") ?: ""
                 if (!kind.equals("searchresults#officer", ignoreCase = true)) return@mapNotNull null
+                val displayName = obj.getString("title") ?: obj.getString("name") ?: ""
+                // Secondary guard: skip corporate officers (companies acting as directors)
+                if (isCompanyName(displayName)) return@mapNotNull null
                 val links = obj.getAsJsonObject("links") ?: return@mapNotNull null
                 val self = links.getString("self") ?: return@mapNotNull null
                 val officerId = self.removePrefix("/officers/").removeSuffix("/appointments")
                     .split("/").firstOrNull() ?: return@mapNotNull null
                 OfficerSearchResult(
-                    name = obj.getString("title") ?: obj.getString("name") ?: name,
+                    name = displayName.ifBlank { name },
                     officerId = officerId,
                     appointmentsUrl = "$apiBase$self"
                 )
@@ -92,6 +95,15 @@ class CompaniesHouseService(private val client: OkHttpClient) {
         } catch (e: Exception) {
             ""
         }
+    }
+
+    private fun isCompanyName(name: String): Boolean {
+        val upper = name.uppercase().trim()
+        return upper.endsWith(" LIMITED") || upper.endsWith(" LTD") || upper.endsWith(" LTD.") ||
+               upper.endsWith(" PLC") || upper.endsWith(" LLP") || upper.endsWith(" INC") ||
+               upper.endsWith(" LLC") || upper.endsWith(" CORPORATION") || upper.endsWith(" CORP") ||
+               upper.contains(" LIMITED ") || upper.contains(" (UK)") ||
+               upper.startsWith("THE ") && upper.length > 15 && upper.any { it.isDigit() }
     }
 
     private fun get(url: String, apiKey: String): String {

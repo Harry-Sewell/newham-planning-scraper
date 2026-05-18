@@ -1,6 +1,9 @@
 package com.denmarkarms.scraper.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -75,8 +79,12 @@ fun PlanningTimelineScreen(vm: PlanningViewModel = viewModel()) {
 
 @Composable
 private fun PlanningApplicationCard(app: PlanningApplication, firstSeen: String) {
+    val context = LocalContext.current
+    val url = "https://pa.newham.gov.uk/online-applications/applicationDetails.do?activeTab=summary&keyVal=${app.keyVal}"
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(8.dp)
     ) {

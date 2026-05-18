@@ -1,5 +1,8 @@
 package com.denmarkarms.scraper.ui.screens
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -94,6 +98,8 @@ fun PeopleCompaniesScreen(vm: PeopleViewModel = viewModel()) {
 @Composable
 private fun PersonCard(person: Person, appointments: List<Appointment>, firstSeen: String) {
     var expanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val profileUrl = "https://find-and-update.company-information.service.gov.uk/officers/${person.officerId}/appointments"
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -105,12 +111,25 @@ private fun PersonCard(person: Person, appointments: List<Appointment>, firstSee
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        person.displayName,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
+                Column(
+                    modifier = Modifier.weight(1f).clickable {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(profileUrl)))
+                    }
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            person.displayName,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Icon(
+                            Icons.Default.OpenInNew,
+                            contentDescription = "Open in Companies House",
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     Text(
                         "Monitoring: ${person.monitoredName}",
                         style = MaterialTheme.typography.labelSmall,
@@ -150,8 +169,12 @@ private fun PersonCard(person: Person, appointments: List<Appointment>, firstSee
 
 @Composable
 private fun AppointmentRow(apt: Appointment) {
+    val context = LocalContext.current
+    val companyUrl = "https://find-and-update.company-information.service.gov.uk/company/${apt.companyNumber}"
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(companyUrl)))
+        },
         verticalAlignment = Alignment.Top
     ) {
         Icon(
@@ -162,7 +185,12 @@ private fun AppointmentRow(apt: Appointment) {
         )
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(apt.companyName, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(apt.companyName, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.width(4.dp))
+                Icon(Icons.Default.OpenInNew, contentDescription = null,
+                    modifier = Modifier.size(11.dp), tint = MaterialTheme.colorScheme.outline)
+            }
             Text(
                 "${apt.role} · from ${apt.appointedOn}" + if (apt.resignedOn.isNotBlank()) " to ${apt.resignedOn}" else "",
                 style = MaterialTheme.typography.labelSmall,
