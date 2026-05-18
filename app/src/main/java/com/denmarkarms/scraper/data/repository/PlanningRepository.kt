@@ -61,20 +61,23 @@ class PlanningRepository(
                     changes.add(entry)
                     db.changeLogDao().insert(entry.toEntity())
                 } else {
+                    // Always refresh reference/description so stale/incorrect data self-heals
+                    val freshRef = result.reference.ifBlank { existing.reference }
+                    val freshDesc = result.description.ifBlank { existing.description }
                     if (existing.status != result.status && result.status.isNotBlank()) {
                         db.planningApplicationDao().update(
-                            existing.copy(status = result.status, lastChecked = now)
+                            existing.copy(status = result.status, reference = freshRef, description = freshDesc, lastChecked = now)
                         )
                         val entry = ChangeLogEntry(
                             type = ChangeType.STATUS_CHANGE,
-                            description = "Status changed for ${result.reference}: ${existing.status} → ${result.status}",
+                            description = "Status changed for $freshRef: ${existing.status} → ${result.status}",
                             entityId = result.keyVal,
                             timestamp = now
                         )
                         changes.add(entry)
                         db.changeLogDao().insert(entry.toEntity())
                     } else {
-                        db.planningApplicationDao().update(existing.copy(lastChecked = now))
+                        db.planningApplicationDao().update(existing.copy(reference = freshRef, description = freshDesc, lastChecked = now))
                     }
                     changes += checkDocuments(result.keyVal, now)
                 }

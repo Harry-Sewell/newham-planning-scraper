@@ -206,6 +206,7 @@ private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String, actionUrl:
         ChangeType.NEW_APPOINTMENT -> Triple(Icons.Default.Work, MaterialTheme.colorScheme.secondary, "New Appointment")
         else -> Triple(Icons.Default.Info, MaterialTheme.colorScheme.outline, "Info")
     }
+    val headline = cardHeadline(entry)
 
     Card(
         modifier = Modifier.fillMaxWidth().then(
@@ -234,8 +235,20 @@ private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String, actionUrl:
                         fontWeight = FontWeight.SemiBold
                     )
                 }
-                Spacer(Modifier.height(4.dp))
-                Text(entry.description, style = MaterialTheme.typography.bodyMedium)
+                if (headline.isNotBlank()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        headline,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    entry.description.take(120) + if (entry.description.length > 120) "…" else "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     formattedTime,
@@ -245,4 +258,19 @@ private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String, actionUrl:
             }
         }
     }
+}
+
+private fun cardHeadline(entry: ChangeLogEntity): String = when (entry.type) {
+    ChangeType.NEW_APPLICATION ->
+        entry.description.substringAfter("New planning application ").substringBefore(":").trim()
+    ChangeType.STATUS_CHANGE ->
+        entry.description.substringAfter("Status changed for ").substringBefore(":").trim()
+    ChangeType.NEW_DOCUMENT ->
+        entry.description.substringAfter("New document for ").substringBefore(" (").trim()
+            .takeIf { it.contains("/") } ?: entry.entityId
+    ChangeType.NEW_PERSON ->
+        entry.description.substringAfter("New person found: ").substringBefore(" (").trim()
+    ChangeType.NEW_APPOINTMENT ->
+        entry.description.substringAfter("New appointment: ").substringBefore(" as ").trim()
+    else -> ""
 }

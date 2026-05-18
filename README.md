@@ -101,16 +101,19 @@ app/
 The scraper targets **Idox**-based planning portals (used by many UK councils). It:
 1. GETs the search page to acquire a session cookie and optional CSRF token
 2. POSTs the address as a keyword search
-3. Parses `<li class="searchresult">` elements for application details and `keyVal` identifiers
-4. Fetches the documents tab for each known application and diffs the document list
+3. Parses `<li class="searchresult">` elements — uses a regex (`\d{2}/\d{4,6}/[A-Z]{2,5}`) to extract the planning reference reliably regardless of how the portal formats the link text
+4. For known applications, fetches the documents tab and finds all `<a href="…/files/…">` links (Newham's Idox instance links document names directly to `/online-applications/files/` paths)
+5. Diffs each document list against the database and records new documents in the change log
 
-If the council updates their portal layout, update the CSS selectors in `NewhamPlanningService.kt`.
+If the council updates their portal layout, update `NewhamPlanningService.kt`. The `/files/` link selector and reference regex are the two most likely things to need adjustment.
 
 ## Troubleshooting
 
 | Symptom | Likely cause |
 |---------|-------------|
 | No planning results | Council portal layout differs from Idox standard — inspect the HTML and update selectors |
+| Planning ref shows as long description text | Old data in DB before the regex-based parser fix — clear applications in Manage Data and re-run |
+| Only 1 document shown per application | Documents table selector mismatch — confirmed fix targets `/files/` links directly |
 | Companies House returns nothing | API key missing or invalid in Config |
 | Email not sending | Check SMTP credentials; Gmail requires an App Password, not your account password |
 | WhatsApp not sending | Twilio sandbox requires the recipient to opt in first via WhatsApp |

@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.denmarkarms.scraper.domain.PlanningApplication
@@ -128,13 +129,15 @@ private fun PlanningApplicationCard(app: PlanningApplication, firstSeen: String)
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
-                // Detail: description text
+                // Detail: description text (truncated)
                 if (app.description.isNotBlank()) {
                     Spacer(Modifier.height(8.dp))
                     Text(
                         app.description,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 if (app.address.isNotBlank()) {
