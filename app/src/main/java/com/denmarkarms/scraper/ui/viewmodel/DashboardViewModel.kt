@@ -48,6 +48,21 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     )
     val lastChecked: StateFlow<Long?> = _lastChecked.asStateFlow()
 
+    private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "last_checked") {
+            _lastChecked.value = prefs.getLong("last_checked", 0L).takeIf { it > 0L }
+        }
+    }
+
+    init {
+        prefs.registerOnSharedPreferenceChangeListener(prefListener)
+    }
+
+    override fun onCleared() {
+        prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
+        super.onCleared()
+    }
+
     fun runChecks() {
         viewModelScope.launch {
             _isChecking.value = true

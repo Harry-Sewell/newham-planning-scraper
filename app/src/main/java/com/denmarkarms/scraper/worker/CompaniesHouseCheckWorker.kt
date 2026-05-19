@@ -30,6 +30,7 @@ class CompaniesHouseCheckWorker(context: Context, params: WorkerParameters) : Co
                         htmlBody = NotificationFormatter.companiesHouseHtmlBody(changes))
                 }
             }
+            app.container.prefs.edit().putLong("last_checked", System.currentTimeMillis()).apply()
             Result.success()
         } catch (e: Exception) {
             Result.retry()

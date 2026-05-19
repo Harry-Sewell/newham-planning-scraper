@@ -30,6 +30,7 @@ class PlanningCheckWorker(context: Context, params: WorkerParameters) : Coroutin
                         htmlBody = NotificationFormatter.planningHtmlBody(changes))
                 }
             }
+            app.container.prefs.edit().putLong("last_checked", System.currentTimeMillis()).apply()
             Result.success()
         } catch (e: Exception) {
             Result.retry()
