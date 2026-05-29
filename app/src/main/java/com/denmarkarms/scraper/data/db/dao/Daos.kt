@@ -39,8 +39,14 @@ interface PlanningDocumentDao {
     @Query("SELECT * FROM planning_documents WHERE application_key_val = :keyVal ORDER BY first_seen DESC")
     suspend fun getForApplicationOnce(keyVal: String): List<PlanningDocumentEntity>
 
+    @Query("SELECT * FROM planning_documents WHERE download_pending = 1 ORDER BY first_seen ASC")
+    suspend fun getPendingDownloads(): List<PlanningDocumentEntity>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(doc: PlanningDocumentEntity): Long
+
+    @Update
+    suspend fun update(doc: PlanningDocumentEntity)
 
     @Delete
     suspend fun delete(doc: PlanningDocumentEntity)

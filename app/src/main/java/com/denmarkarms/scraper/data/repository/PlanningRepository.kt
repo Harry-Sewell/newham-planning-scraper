@@ -5,6 +5,7 @@ import com.denmarkarms.scraper.data.db.AppDatabase
 import com.denmarkarms.scraper.data.db.entity.*
 import com.denmarkarms.scraper.data.network.NewhamPlanningService
 import com.denmarkarms.scraper.domain.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -85,7 +86,21 @@ class PlanningRepository(
                 }
             }
         }
+        retryPendingDownloads()
         return changes
+    }
+
+    private suspend fun retryPendingDownloads() {
+        val pending = db.planningDocumentDao().getPendingDownloads()
+        for (doc in pending) {
+            val appRef = db.planningApplicationDao().findByKeyVal(doc.applicationKeyVal)
+                ?.reference?.takeIf { it.isNotBlank() } ?: doc.applicationKeyVal
+            val success = downloader.download(doc.url, appRef, doc.name)
+            if (success) {
+                db.planningDocumentDao().update(doc.copy(downloadPending = false))
+            }
+            delay(1_500)
+        }
     }
 
     private suspend fun checkDocuments(keyVal: String, now: Long): List<ChangeLogEntry> {
@@ -116,7 +131,15 @@ class PlanningRepository(
                 )
                 changes.add(entry)
                 db.changeLogDao().insert(entry.toEntity())
-                downloader.download(doc.url, appRef, doc.name)
+                val downloaded = downloader.download(doc.url, appRef, doc.name)
+                if (!downloaded) {
+                    db.planningDocumentDao().update(
+                        db.planningDocumentDao().getForApplicationOnce(keyVal)
+                            .first { it.url == doc.url || it.name == doc.name }
+                            .copy(downloadPending = true)
+                    )
+                }
+                delay(1_500)
             }
         }
         return changes

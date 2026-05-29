@@ -17,18 +17,21 @@ import java.io.File
 
 class DocumentDownloader(private val context: Context, private val httpClient: OkHttpClient) {
 
-    suspend fun download(url: String, appRef: String, displayName: String) {
-        if (url.isBlank()) return
+    suspend fun download(url: String, appRef: String, displayName: String): Boolean {
+        if (url.isBlank()) return true
         val folder = appRef.replace("/", "_").replace(" ", "_").ifBlank { "planning" }
         val filename = filenameFromUrl(url, displayName)
-        withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.IO) {
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     downloadViaMediaStore(url, filename, folder)
                 } else {
                     downloadViaFile(url, filename, folder)
                 }
-            } catch (_: Exception) {}
+                true
+            } catch (_: Exception) {
+                false
+            }
         }
     }
 
@@ -54,19 +57,19 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
             put(MediaStore.Downloads.RELATIVE_PATH, relativePath)
             put(MediaStore.Downloads.IS_PENDING, 1)
         }
-        val uri = resolver.insert(collection, values) ?: return
+        val uri = resolver.insert(collection, values) ?: throw IllegalStateException("MediaStore insert failed")
         try {
             val response = httpClient.newCall(Request.Builder().url(url).build()).execute()
-            if (response.isSuccessful) {
-                resolver.openOutputStream(uri)?.use { out ->
-                    response.body?.byteStream()?.copyTo(out)
-                }
-                values.clear()
-                values.put(MediaStore.Downloads.IS_PENDING, 0)
-                resolver.update(uri, values, null, null)
-            } else {
+            if (!response.isSuccessful) {
                 resolver.delete(uri, null, null)
+                throw IllegalStateException("HTTP ${response.code}")
             }
+            resolver.openOutputStream(uri)?.use { out ->
+                response.body?.byteStream()?.copyTo(out)
+            }
+            values.clear()
+            values.put(MediaStore.Downloads.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
         } catch (e: Exception) {
             resolver.delete(uri, null, null)
             throw e
@@ -75,7 +78,8 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
 
     private fun downloadViaFile(url: String, filename: String, folder: String) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            != PackageManager.PERMISSION_GRANTED) return
+            != PackageManager.PERMISSION_GRANTED
+        ) throw SecurityException("WRITE_EXTERNAL_STORAGE not granted")
 
         val dir = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
@@ -85,10 +89,9 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
 
         val finalFilename = nextAvailableFilename(filename) { name -> File(dir, name).exists() }
         val response = httpClient.newCall(Request.Builder().url(url).build()).execute()
-        if (response.isSuccessful) {
-            File(dir, finalFilename).outputStream().use { out ->
-                response.body?.byteStream()?.copyTo(out)
-            }
+        if (!response.isSuccessful) throw IllegalStateException("HTTP ${response.code}")
+        File(dir, finalFilename).outputStream().use { out ->
+            response.body?.byteStream()?.copyTo(out)
         }
     }
 

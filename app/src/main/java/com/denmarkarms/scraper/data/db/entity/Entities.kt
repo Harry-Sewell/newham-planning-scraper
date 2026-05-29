@@ -25,7 +25,8 @@ data class PlanningDocumentEntity(
     @ColumnInfo(name = "name") val name: String,
     @ColumnInfo(name = "date") val date: String,
     @ColumnInfo(name = "url") val url: String,
-    @ColumnInfo(name = "first_seen") val firstSeen: Long
+    @ColumnInfo(name = "first_seen") val firstSeen: Long,
+    @ColumnInfo(name = "download_pending") val downloadPending: Boolean = false
 )
 
 @Entity(tableName = "monitored_addresses")
