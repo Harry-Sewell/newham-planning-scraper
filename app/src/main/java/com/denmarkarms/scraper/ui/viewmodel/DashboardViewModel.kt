@@ -82,6 +82,8 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 val now = System.currentTimeMillis()
                 _lastChecked.value = now
                 prefs.edit().putLong("last_checked", now).apply()
+                container.downloadManager.requeueFailed()
+                container.downloadManager.trigger()
             }
         }
     }
