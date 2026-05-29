@@ -82,7 +82,6 @@ class DataManagerViewModel(application: Application) : AndroidViewModel(applicat
 
     fun retryFailedDownloads() = viewModelScope.launch {
         val app = getApplication<DenmarkArmsApp>()
-        app.container.downloadManager.requeueFailed()
         app.container.downloadManager.trigger()
     }
 }

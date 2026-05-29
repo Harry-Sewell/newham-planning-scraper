@@ -29,13 +29,8 @@ class DocumentDownloadManager(
         }
     }
 
-    fun requeueFailed() {
-        scope.launch(Dispatchers.IO) {
-            db.planningDocumentDao().requeueFailed()
-        }
-    }
-
     private suspend fun processQueue() {
+        db.planningDocumentDao().requeueFailed()
         while (true) {
             val queued = db.planningDocumentDao().getQueuedOnce()
             if (queued.isEmpty()) break

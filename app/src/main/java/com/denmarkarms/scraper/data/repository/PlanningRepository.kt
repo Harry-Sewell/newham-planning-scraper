@@ -60,6 +60,7 @@ class PlanningRepository(
                     )
                     changes.add(entry)
                     db.changeLogDao().insert(entry.toEntity())
+                    changes += checkDocuments(result.keyVal, now)
                 } else {
                     // Always refresh reference/description so stale/incorrect data self-heals
                     val freshRef = result.reference.ifBlank { existing.reference }
