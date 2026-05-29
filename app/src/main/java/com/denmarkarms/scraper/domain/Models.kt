@@ -95,4 +95,5 @@ object PrefsKeys {
     const val TWILIO_AUTH_TOKEN = "twilio_auth_token"
     const val TWILIO_FROM_NUMBER = "twilio_from_number"
     const val COMPANIES_HOUSE_API_KEY = "ch_api_key"
+    const val DOWNLOAD_DELAY_SECS = "download_delay_secs"
 }

@@ -1,5 +1,6 @@
 package com.denmarkarms.scraper.data.repository
 
+import android.content.SharedPreferences
 import com.denmarkarms.scraper.data.DocumentDownloader
 import com.denmarkarms.scraper.data.db.AppDatabase
 import com.denmarkarms.scraper.data.db.entity.*
@@ -12,7 +13,8 @@ import kotlinx.coroutines.flow.map
 class PlanningRepository(
     private val db: AppDatabase,
     private val service: NewhamPlanningService,
-    private val downloader: DocumentDownloader
+    private val downloader: DocumentDownloader,
+    private val prefs: SharedPreferences
 ) {
     val applications: Flow<List<PlanningApplication>> =
         db.planningApplicationDao().getAll().map { list -> list.map { it.toDomain() } }
@@ -139,11 +141,15 @@ class PlanningRepository(
                             .copy(downloadPending = true)
                     )
                 }
-                delay(1_500)
+                delay(downloadDelayMs())
             }
         }
         return changes
     }
+
+    private fun downloadDelayMs(): Long =
+        prefs.getString(PrefsKeys.DOWNLOAD_DELAY_SECS, "1.5")
+            ?.toDoubleOrNull()?.coerceAtLeast(0.0)?.times(1000)?.toLong() ?: 1500L
 
     fun getDocumentsFor(keyVal: String): Flow<List<PlanningDocument>> =
         db.planningDocumentDao().getForApplication(keyVal).map { list -> list.map { it.toDomain() } }

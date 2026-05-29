@@ -36,7 +36,7 @@ class AppContainer(context: Context) {
     val companiesHouseService = CompaniesHouseService(httpClient)
 
     val documentDownloader = DocumentDownloader(context, httpClient)
-    val planningRepository = PlanningRepository(db, newhamService, documentDownloader)
+    val planningRepository = PlanningRepository(db, newhamService, documentDownloader, prefs)
     val companiesHouseRepository = CompaniesHouseRepository(db, companiesHouseService, prefs)
 
     val notificationSender = NotificationSender(prefs, httpClient)

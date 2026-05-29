@@ -64,6 +64,7 @@ fun ConfigScreen(
             item { RecipientSection(recipients, vm) }
             item { NotificationSettingsSection(vm, testStatus) }
             item { ApiSettingsSection(vm) }
+            item { ScraperSettingsSection(vm) }
             item { DataManagementSection(onNavigateToDataManager) }
             item { Spacer(Modifier.height(32.dp)) }
         }
@@ -283,6 +284,32 @@ private fun NotificationSettingsSection(vm: ConfigViewModel, testStatus: String?
         Spacer(Modifier.width(8.dp))
         Text(if (testStatus == "Sending…") "Sending…" else "Send test notification")
     }
+}
+
+@Composable
+private fun ScraperSettingsSection(vm: ConfigViewModel) {
+    var delaySecs by remember { mutableStateOf(vm.getPref(PrefsKeys.DOWNLOAD_DELAY_SECS, "1.5")) }
+
+    Spacer(Modifier.height(8.dp))
+    SectionHeader("Scraper Settings")
+    Text(
+        "Delay between document downloads. Increase if the portal blocks rapid requests.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.outline,
+        modifier = Modifier.padding(bottom = 8.dp)
+    )
+    OutlinedTextField(
+        value = delaySecs,
+        onValueChange = { value ->
+            delaySecs = value
+            if (value.toDoubleOrNull() != null) vm.setPref(PrefsKeys.DOWNLOAD_DELAY_SECS, value)
+        },
+        label = { Text("Download delay (seconds)") },
+        placeholder = { Text("e.g. 1.5") },
+        modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        singleLine = true
+    )
 }
 
 @Composable
