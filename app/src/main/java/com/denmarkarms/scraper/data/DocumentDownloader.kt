@@ -38,17 +38,19 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
         val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         val relativePath = "${Environment.DIRECTORY_DOWNLOADS}/$folder"
 
-        resolver.query(
-            collection,
-            arrayOf(MediaStore.Downloads._ID),
-            "${MediaStore.Downloads.DISPLAY_NAME} = ? AND ${MediaStore.Downloads.RELATIVE_PATH} = ?",
-            arrayOf(filename, "$relativePath/"),
-            null
-        )?.use { if (it.count > 0) return }
+        val finalFilename = nextAvailableFilename(filename) { name ->
+            resolver.query(
+                collection,
+                arrayOf(MediaStore.Downloads._ID),
+                "${MediaStore.Downloads.DISPLAY_NAME} = ? AND ${MediaStore.Downloads.RELATIVE_PATH} = ?",
+                arrayOf(name, "$relativePath/"),
+                null
+            )?.use { it.count > 0 } ?: false
+        }
 
         val values = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, filename)
-            put(MediaStore.Downloads.MIME_TYPE, mimeTypeFor(filename))
+            put(MediaStore.Downloads.DISPLAY_NAME, finalFilename)
+            put(MediaStore.Downloads.MIME_TYPE, mimeTypeFor(finalFilename))
             put(MediaStore.Downloads.RELATIVE_PATH, relativePath)
             put(MediaStore.Downloads.IS_PENDING, 1)
         }
@@ -80,14 +82,25 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
             folder
         )
         dir.mkdirs()
-        val file = File(dir, filename)
-        if (file.exists()) return
 
+        val finalFilename = nextAvailableFilename(filename) { name -> File(dir, name).exists() }
         val response = httpClient.newCall(Request.Builder().url(url).build()).execute()
         if (response.isSuccessful) {
-            file.outputStream().use { out ->
+            File(dir, finalFilename).outputStream().use { out ->
                 response.body?.byteStream()?.copyTo(out)
             }
+        }
+    }
+
+    private fun nextAvailableFilename(filename: String, exists: (String) -> Boolean): String {
+        if (!exists(filename)) return filename
+        val ext = if (filename.contains(".")) ".${filename.substringAfterLast(".")}" else ""
+        val base = filename.dropLast(ext.length)
+        var version = 2
+        while (true) {
+            val candidate = "${base}_V$version$ext"
+            if (!exists(candidate)) return candidate
+            version++
         }
     }
 
