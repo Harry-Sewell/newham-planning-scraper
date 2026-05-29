@@ -79,4 +79,10 @@ class DataManagerViewModel(application: Application) : AndroidViewModel(applicat
 
     fun formatTimestamp(ts: Long): String =
         SimpleDateFormat("dd MMM yyyy HH:mm", Locale.UK).format(Date(ts))
+
+    fun retryFailedDownloads() = viewModelScope.launch {
+        val app = getApplication<DenmarkArmsApp>()
+        app.container.downloadManager.requeueFailed()
+        app.container.downloadManager.trigger()
+    }
 }

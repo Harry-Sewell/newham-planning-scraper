@@ -97,3 +97,10 @@ object PrefsKeys {
     const val COMPANIES_HOUSE_API_KEY = "ch_api_key"
     const val DOWNLOAD_DELAY_SECS = "download_delay_secs"
 }
+
+object DownloadStatus {
+    const val QUEUED = "queued"
+    const val IN_PROGRESS = "in_progress"
+    const val DOWNLOADED = "downloaded"
+    const val FAILED = "failed"
+}

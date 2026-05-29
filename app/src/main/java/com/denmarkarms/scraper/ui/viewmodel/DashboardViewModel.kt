@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -39,6 +40,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     val monitoredPersons: StateFlow<List<MonitoredPersonEntity>> =
         container.db.monitoredPersonDao().getAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val documentStatusMap: StateFlow<Map<String, String>> =
+        container.db.planningDocumentDao().getAll()
+            .map { docs -> docs.associate { "${it.applicationKeyVal}:${it.name}" to it.downloadStatus } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     private val _isChecking = MutableStateFlow(false)
     val isChecking: StateFlow<Boolean> = _isChecking.asStateFlow()

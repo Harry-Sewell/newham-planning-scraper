@@ -3,6 +3,7 @@ package com.denmarkarms.scraper.data.db.entity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.denmarkarms.scraper.domain.DownloadStatus
 
 @Entity(tableName = "planning_applications")
 data class PlanningApplicationEntity(
@@ -26,7 +27,7 @@ data class PlanningDocumentEntity(
     @ColumnInfo(name = "date") val date: String,
     @ColumnInfo(name = "url") val url: String,
     @ColumnInfo(name = "first_seen") val firstSeen: Long,
-    @ColumnInfo(name = "download_pending") val downloadPending: Boolean = false
+    @ColumnInfo(name = "download_status") val downloadStatus: String = DownloadStatus.QUEUED
 )
 
 @Entity(tableName = "monitored_addresses")

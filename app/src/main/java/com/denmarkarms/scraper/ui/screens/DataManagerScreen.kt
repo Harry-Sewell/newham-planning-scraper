@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.denmarkarms.scraper.data.db.entity.*
+import com.denmarkarms.scraper.domain.DownloadStatus
 import com.denmarkarms.scraper.ui.viewmodel.DataManagerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -132,6 +133,7 @@ private fun ApplicationsTab(
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.outline)
                                     }
+                                    DownloadStatusBadge(doc.downloadStatus)
                                 }
                                 IconButton(
                                     onClick = { vm.deleteDocument(doc) },
@@ -343,4 +345,17 @@ private fun ConfirmDialog(title: String, text: String, onConfirm: () -> Unit, on
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+}
+
+@Composable
+private fun DownloadStatusBadge(status: String) {
+    if (status.isBlank()) return
+    val (color, label) = when (status) {
+        DownloadStatus.QUEUED -> Pair(MaterialTheme.colorScheme.outline, "Queued")
+        DownloadStatus.IN_PROGRESS -> Pair(MaterialTheme.colorScheme.primary, "Downloading…")
+        DownloadStatus.DOWNLOADED -> Pair(MaterialTheme.colorScheme.tertiary, "Downloaded")
+        DownloadStatus.FAILED -> Pair(MaterialTheme.colorScheme.error, "Failed")
+        else -> return
+    }
+    Text(label, style = MaterialTheme.typography.labelSmall, color = color)
 }

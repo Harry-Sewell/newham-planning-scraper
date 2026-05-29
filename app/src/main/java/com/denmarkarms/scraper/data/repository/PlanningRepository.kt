@@ -1,20 +1,15 @@
 package com.denmarkarms.scraper.data.repository
 
-import android.content.SharedPreferences
-import com.denmarkarms.scraper.data.DocumentDownloader
 import com.denmarkarms.scraper.data.db.AppDatabase
 import com.denmarkarms.scraper.data.db.entity.*
 import com.denmarkarms.scraper.data.network.NewhamPlanningService
 import com.denmarkarms.scraper.domain.*
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class PlanningRepository(
     private val db: AppDatabase,
-    private val service: NewhamPlanningService,
-    private val downloader: DocumentDownloader,
-    private val prefs: SharedPreferences
+    private val service: NewhamPlanningService
 ) {
     val applications: Flow<List<PlanningApplication>> =
         db.planningApplicationDao().getAll().map { list -> list.map { it.toDomain() } }
@@ -88,21 +83,7 @@ class PlanningRepository(
                 }
             }
         }
-        retryPendingDownloads()
         return changes
-    }
-
-    private suspend fun retryPendingDownloads() {
-        val pending = db.planningDocumentDao().getPendingDownloads()
-        for (doc in pending) {
-            val appRef = db.planningApplicationDao().findByKeyVal(doc.applicationKeyVal)
-                ?.reference?.takeIf { it.isNotBlank() } ?: doc.applicationKeyVal
-            val success = downloader.download(doc.url, appRef, doc.name)
-            if (success) {
-                db.planningDocumentDao().update(doc.copy(downloadPending = false))
-            }
-            delay(1_500)
-        }
     }
 
     private suspend fun checkDocuments(keyVal: String, now: Long): List<ChangeLogEntry> {
@@ -122,7 +103,8 @@ class PlanningRepository(
                         name = doc.name,
                         date = doc.date,
                         url = doc.url,
-                        firstSeen = now
+                        firstSeen = now,
+                        downloadStatus = if (doc.url.isNotBlank()) DownloadStatus.QUEUED else DownloadStatus.DOWNLOADED
                     )
                 )
                 val entry = ChangeLogEntry(
@@ -133,23 +115,10 @@ class PlanningRepository(
                 )
                 changes.add(entry)
                 db.changeLogDao().insert(entry.toEntity())
-                val downloaded = downloader.download(doc.url, appRef, doc.name)
-                if (!downloaded) {
-                    db.planningDocumentDao().update(
-                        db.planningDocumentDao().getForApplicationOnce(keyVal)
-                            .first { it.url == doc.url || it.name == doc.name }
-                            .copy(downloadPending = true)
-                    )
-                }
-                delay(downloadDelayMs())
             }
         }
         return changes
     }
-
-    private fun downloadDelayMs(): Long =
-        prefs.getString(PrefsKeys.DOWNLOAD_DELAY_SECS, "1.5")
-            ?.toDoubleOrNull()?.coerceAtLeast(0.0)?.times(1000)?.toLong() ?: 1500L
 
     fun getDocumentsFor(keyVal: String): Flow<List<PlanningDocument>> =
         db.planningDocumentDao().getForApplication(keyVal).map { list -> list.map { it.toDomain() } }

@@ -20,7 +20,7 @@ import com.denmarkarms.scraper.data.db.entity.*
         RecipientEntity::class,
         ChangeLogEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -42,9 +42,32 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE planning_documents_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        application_key_val TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        date TEXT NOT NULL,
+                        url TEXT NOT NULL,
+                        first_seen INTEGER NOT NULL,
+                        download_status TEXT NOT NULL DEFAULT 'queued'
+                    )
+                """.trimIndent())
+                database.execSQL("""
+                    INSERT INTO planning_documents_new (id, application_key_val, name, date, url, first_seen, download_status)
+                    SELECT id, application_key_val, name, date, url, first_seen, 'queued'
+                    FROM planning_documents
+                """.trimIndent())
+                database.execSQL("DROP TABLE planning_documents")
+                database.execSQL("ALTER TABLE planning_documents_new RENAME TO planning_documents")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "denmark_arms.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
                 .also { INSTANCE = it }
         }

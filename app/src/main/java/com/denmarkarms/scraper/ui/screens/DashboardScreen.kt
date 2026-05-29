@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.denmarkarms.scraper.data.db.entity.ChangeLogEntity
 import com.denmarkarms.scraper.domain.ChangeType
+import com.denmarkarms.scraper.domain.DownloadStatus
 import com.denmarkarms.scraper.ui.viewmodel.DashboardViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,6 +39,7 @@ fun DashboardScreen(vm: DashboardViewModel = viewModel()) {
     val lastChecked by vm.lastChecked.collectAsState()
     val monitoredAddresses by vm.monitoredAddresses.collectAsState()
     val monitoredPersons by vm.monitoredPersons.collectAsState()
+    val documentStatusMap by vm.documentStatusMap.collectAsState()
 
     val infiniteTransition = rememberInfiniteTransition(label = "spin")
     val rotationAngle by infiniteTransition.animateFloat(
@@ -186,7 +188,8 @@ fun DashboardScreen(vm: DashboardViewModel = viewModel()) {
                         entry = entry,
                         formattedTime = vm.formatTimestamp(entry.timestamp),
                         onDismiss = { vm.dismissEntry(entry) },
-                        actionUrl = changeUrl(entry)
+                        actionUrl = changeUrl(entry),
+                        documentStatusMap = documentStatusMap
                     )
                 }
             }
@@ -212,7 +215,8 @@ private fun SwipeToDismissChangeCard(
     entry: ChangeLogEntity,
     formattedTime: String,
     onDismiss: () -> Unit,
-    actionUrl: String? = null
+    actionUrl: String? = null,
+    documentStatusMap: Map<String, String> = emptyMap()
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -245,12 +249,12 @@ private fun SwipeToDismissChangeCard(
         },
         enableDismissFromStartToEnd = false
     ) {
-        ChangeCard(entry, formattedTime, actionUrl)
+        ChangeCard(entry, formattedTime, actionUrl, documentStatusMap)
     }
 }
 
 @Composable
-private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String, actionUrl: String? = null) {
+private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String, actionUrl: String? = null, documentStatusMap: Map<String, String> = emptyMap()) {
     val context = LocalContext.current
     val (icon, accentColor, label) = when (entry.type) {
         ChangeType.NEW_APPLICATION -> Triple(Icons.Default.AddCircle, MaterialTheme.colorScheme.primary, "New Application")
@@ -309,6 +313,14 @@ private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String, actionUrl:
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline
                 )
+                if (entry.type == ChangeType.NEW_DOCUMENT) {
+                    val docName = entry.description.substringAfter("): ").substringBeforeLast(" (").trim()
+                    val status = documentStatusMap["${entry.entityId}:$docName"]
+                    if (!status.isNullOrBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        DownloadStatusBadge(status)
+                    }
+                }
             }
         }
     }
@@ -320,6 +332,22 @@ private fun MonitorSummaryRow(icon: androidx.compose.ui.graphics.vector.ImageVec
         Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.width(6.dp))
         Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+    }
+}
+
+@Composable
+private fun DownloadStatusBadge(status: String) {
+    val (icon, color, label) = when (status) {
+        DownloadStatus.QUEUED -> Triple(Icons.Default.Schedule, MaterialTheme.colorScheme.outline, "Queued for download")
+        DownloadStatus.IN_PROGRESS -> Triple(Icons.Default.Downloading, MaterialTheme.colorScheme.primary, "Downloading…")
+        DownloadStatus.DOWNLOADED -> Triple(Icons.Default.CheckCircle, MaterialTheme.colorScheme.tertiary, "Downloaded")
+        DownloadStatus.FAILED -> Triple(Icons.Default.ErrorOutline, MaterialTheme.colorScheme.error, "Download failed")
+        else -> return
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(12.dp), tint = color)
+        Spacer(Modifier.width(4.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = color)
     }
 }
 
