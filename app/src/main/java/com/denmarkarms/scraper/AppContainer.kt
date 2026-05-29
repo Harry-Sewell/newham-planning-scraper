@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.denmarkarms.scraper.data.db.AppDatabase
 import com.denmarkarms.scraper.data.network.CompaniesHouseService
 import com.denmarkarms.scraper.data.network.NewhamPlanningService
+import com.denmarkarms.scraper.data.DocumentDownloader
 import com.denmarkarms.scraper.data.repository.CompaniesHouseRepository
 import com.denmarkarms.scraper.data.repository.PlanningRepository
 import com.denmarkarms.scraper.notification.NotificationSender
@@ -34,7 +35,8 @@ class AppContainer(context: Context) {
     val newhamService = NewhamPlanningService(httpClient)
     val companiesHouseService = CompaniesHouseService(httpClient)
 
-    val planningRepository = PlanningRepository(db, newhamService)
+    val documentDownloader = DocumentDownloader(context, httpClient)
+    val planningRepository = PlanningRepository(db, newhamService, documentDownloader)
     val companiesHouseRepository = CompaniesHouseRepository(db, companiesHouseService, prefs)
 
     val notificationSender = NotificationSender(prefs, httpClient)
