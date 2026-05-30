@@ -145,7 +145,6 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
             .replace(Regex("<[^>]+>"), " ")
             .replace(Regex("\\s+"), " ")
             .trim()
-            .take(250)
         return if (snippet.isBlank()) withRetry else "$withRetry\n$snippet"
     }
 
