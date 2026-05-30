@@ -322,8 +322,7 @@ private fun ChangeCard(
                     color = MaterialTheme.colorScheme.outline
                 )
                 if (entry.type == ChangeType.NEW_DOCUMENT) {
-                    val docName = entry.description.substringAfter("): ").substringBeforeLast(" (").trim()
-                    val doc = documentMap["${entry.entityId}:$docName"]
+                    val doc = documentMap["${entry.entityId}:${entry.timestamp}"]
                     if (doc != null && doc.url.isNotBlank()) {
                         Spacer(Modifier.height(6.dp))
                         DocumentDownloadRow(doc = doc, onDownload = { onDownload(doc) })

@@ -22,7 +22,7 @@ fun DataManagerScreen(
     onBack: () -> Unit,
     vm: DataManagerViewModel = viewModel()
 ) {
-    val tabs = listOf("Applications", "Documents", "People", "Change Log")
+    val tabs = listOf("Applications", "People", "Change Log")
     var selectedTab by remember { mutableStateOf(0) }
 
     val applications by vm.applications.collectAsState()
@@ -49,7 +49,7 @@ fun DataManagerScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            ScrollableTabRow(selectedTabIndex = selectedTab) {
+            TabRow(selectedTabIndex = selectedTab) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
@@ -61,9 +61,8 @@ fun DataManagerScreen(
 
             when (selectedTab) {
                 0 -> ApplicationsTab(applications, documents, vm)
-                1 -> DocumentsTab(applications, documents, vm)
-                2 -> PeopleTab(persons, appointments, vm)
-                3 -> ChangeLogTab(changeLog, vm)
+                1 -> PeopleTab(persons, appointments, vm)
+                2 -> ChangeLogTab(changeLog, vm)
             }
         }
     }
@@ -144,144 +143,6 @@ private fun ApplicationsTab(
                                         modifier = Modifier.size(16.dp),
                                         tint = MaterialTheme.colorScheme.error)
                                 }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DocumentsTab(
-    applications: List<PlanningApplicationEntity>,
-    documents: List<PlanningDocumentEntity>,
-    vm: DataManagerViewModel
-) {
-    val appMap = remember(applications) { applications.associateBy { it.keyVal } }
-    val grouped = remember(documents) {
-        documents.groupBy { it.applicationKeyVal }
-            .entries.sortedByDescending { (_, docs) -> docs.maxOf { it.firstSeen } }
-    }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        item {
-            Text(
-                "${documents.size} document${if (documents.size != 1) "s" else ""} across ${grouped.size} application${if (grouped.size != 1) "s" else ""}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-
-        if (documents.isEmpty()) {
-            item { EmptyHint("No documents found yet") }
-        }
-
-        grouped.forEach { (keyVal, appDocs) ->
-            val app = appMap[keyVal]
-            val appLabel = app?.reference?.takeIf { it.isNotBlank() } ?: keyVal
-            val appDesc = app?.description?.take(60)?.let { if (it.isNotEmpty()) " — $it" else "" } ?: ""
-
-            item(key = "header_$keyVal") {
-                Column(modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)) {
-                    Text(
-                        appLabel,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    if (appDesc.isNotBlank()) {
-                        Text(
-                            appDesc.removePrefix(" — ").take(60),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                    HorizontalDivider(modifier = Modifier.padding(top = 4.dp))
-                }
-            }
-
-            items(appDocs, key = { it.id }) { doc ->
-                DocumentCard(doc = doc, onDownload = { vm.downloadDocument(doc) })
-            }
-        }
-    }
-}
-
-@Composable
-private fun DocumentCard(doc: PlanningDocumentEntity, onDownload: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Icon(
-                Icons.Default.Description,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp).padding(top = 2.dp),
-                tint = MaterialTheme.colorScheme.outline
-            )
-            Spacer(Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(doc.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
-                if (doc.date.isNotBlank()) {
-                    Text(doc.date, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                }
-                Spacer(Modifier.height(4.dp))
-                when (doc.downloadStatus) {
-                    DownloadStatus.QUEUED -> {
-                        if (doc.url.isNotBlank()) {
-                            OutlinedButton(
-                                onClick = onDownload,
-                                modifier = Modifier.height(32.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
-                            ) {
-                                Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Download", style = MaterialTheme.typography.labelSmall)
-                            }
-                        } else {
-                            DownloadStatusBadge(DownloadStatus.DOWNLOADED)
-                        }
-                    }
-                    DownloadStatus.IN_PROGRESS -> {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp)
-                            Spacer(Modifier.width(6.dp))
-                            Text("Downloading…", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                    DownloadStatus.DOWNLOADED -> {
-                        DownloadStatusBadge(DownloadStatus.DOWNLOADED)
-                    }
-                    DownloadStatus.FAILED -> {
-                        Column {
-                            DownloadStatusBadge(DownloadStatus.FAILED)
-                            if (doc.downloadError.isNotBlank()) {
-                                Text(
-                                    doc.downloadError,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                                )
-                            }
-                            Spacer(Modifier.height(4.dp))
-                            OutlinedButton(
-                                onClick = onDownload,
-                                modifier = Modifier.height(32.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
-                            ) {
-                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Retry", style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }

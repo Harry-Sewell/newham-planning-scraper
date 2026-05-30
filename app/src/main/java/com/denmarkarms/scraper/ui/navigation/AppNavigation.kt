@@ -18,11 +18,12 @@ import com.denmarkarms.scraper.ui.screens.*
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Home)
     object Planning : Screen("planning", "Planning", Icons.Default.LocationCity)
+    object Documents : Screen("documents", "Documents", Icons.Default.Folder)
     object People : Screen("people", "People", Icons.Default.People)
     object Config : Screen("config", "Config", Icons.Default.Settings)
 }
 
-private val bottomNavItems = listOf(Screen.Dashboard, Screen.Planning, Screen.People, Screen.Config)
+private val bottomNavItems = listOf(Screen.Dashboard, Screen.Planning, Screen.Documents, Screen.People, Screen.Config)
 
 @Composable
 fun AppNavigation() {
@@ -61,6 +62,7 @@ fun AppNavigation() {
         ) {
             composable(Screen.Dashboard.route) { DashboardScreen() }
             composable(Screen.Planning.route) { PlanningTimelineScreen() }
+            composable(Screen.Documents.route) { DocumentsScreen() }
             composable(Screen.People.route) { PeopleCompaniesScreen() }
             composable(Screen.Config.route) {
                 ConfigScreen(onNavigateToDataManager = { navController.navigate("data_manager") })
