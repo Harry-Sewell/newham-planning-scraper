@@ -1,5 +1,13 @@
 package com.denmarkarms.scraper.ui.screens
 
+import android.content.ContentUris
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -86,11 +95,16 @@ fun DocumentsScreen(vm: DocumentsViewModel = viewModel()) {
 
                 grouped.forEach { (keyVal, appDocs) ->
                     val app = appMap[keyVal]
+                    val appRef = app?.reference?.takeIf { it.isNotBlank() } ?: keyVal
                     item(key = "header_$keyVal") {
                         ApplicationHeader(app = app, keyVal = keyVal, docCount = appDocs.size)
                     }
                     items(appDocs, key = { it.id }) { doc ->
-                        DocumentRow(doc = doc, onDownload = { vm.downloadDocument(doc) })
+                        DocumentRow(
+                            doc = doc,
+                            appRef = appRef,
+                            onDownload = { vm.downloadDocument(doc) }
+                        )
                     }
                 }
             }
@@ -131,9 +145,16 @@ private fun ApplicationHeader(
 }
 
 @Composable
-private fun DocumentRow(doc: PlanningDocumentEntity, onDownload: () -> Unit) {
+private fun DocumentRow(
+    doc: PlanningDocumentEntity,
+    appRef: String,
+    onDownload: () -> Unit
+) {
+    val context = LocalContext.current
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { openDocument(context, doc, appRef) },
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
@@ -141,10 +162,14 @@ private fun DocumentRow(doc: PlanningDocumentEntity, onDownload: () -> Unit) {
             verticalAlignment = Alignment.Top
         ) {
             Icon(
-                Icons.Default.Description,
+                if (doc.downloadStatus == DownloadStatus.DOWNLOADED) Icons.Default.InsertDriveFile
+                else Icons.Default.Description,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp).padding(top = 2.dp),
-                tint = MaterialTheme.colorScheme.outline
+                tint = if (doc.downloadStatus == DownloadStatus.DOWNLOADED)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.outline
             )
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -201,7 +226,7 @@ private fun DocumentStatusRow(doc: PlanningDocumentEntity, onDownload: () -> Uni
             }
         }
         DownloadStatus.DOWNLOADED -> {
-            StatusChip(color = MaterialTheme.colorScheme.tertiary, label = "Downloaded", icon = Icons.Default.CheckCircle)
+            StatusChip(color = MaterialTheme.colorScheme.tertiary, label = "Downloaded · tap to open", icon = Icons.Default.CheckCircle)
         }
         DownloadStatus.FAILED -> {
             Column {
@@ -228,11 +253,66 @@ private fun DocumentStatusRow(doc: PlanningDocumentEntity, onDownload: () -> Uni
     }
 }
 
+private fun openDocument(context: Context, doc: PlanningDocumentEntity, appRef: String) {
+    if (doc.downloadStatus == DownloadStatus.DOWNLOADED && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val filename = docFilename(doc.url, doc.name)
+        if (filename != null) {
+            val folder = appRef.replace("/", "_").replace(" ", "_").ifBlank { "planning" }
+            val localUri = findInMediaStore(context, folder, filename)
+            if (localUri != null) {
+                try {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(localUri, mimeTypeFor(filename))
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                    )
+                    return
+                } catch (_: Exception) {}
+            }
+        }
+    }
+    if (doc.url.isNotBlank()) {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(doc.url)))
+    }
+}
+
+private fun findInMediaStore(context: Context, folder: String, filename: String): Uri? {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+    val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+    val relativePath = "${Environment.DIRECTORY_DOWNLOADS}/$folder/"
+    val baseName = filename.substringBeforeLast(".")
+    context.contentResolver.query(
+        collection,
+        arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME),
+        "${MediaStore.Downloads.RELATIVE_PATH} = ?",
+        arrayOf(relativePath),
+        "${MediaStore.Downloads.DATE_ADDED} DESC"
+    )?.use { cursor ->
+        while (cursor.moveToNext()) {
+            val name = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME))
+            if (name == filename || name.startsWith("${baseName}_V")) {
+                val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID))
+                return ContentUris.withAppendedId(collection, id)
+            }
+        }
+    }
+    return null
+}
+
 private fun docFilename(url: String, name: String): String? {
     if (url.isBlank()) return null
     val fromUrl = url.substringAfterLast("/").takeIf { it.isNotBlank() && it.contains(".") }
     val filename = fromUrl ?: "${name.replace("""[\\/:"*?<>|]""".toRegex(), "_")}.pdf"
     return filename.takeIf { it != name }
+}
+
+private fun mimeTypeFor(filename: String): String = when {
+    filename.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+    filename.endsWith(".doc", ignoreCase = true) -> "application/msword"
+    filename.endsWith(".docx", ignoreCase = true) ->
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    else -> "application/octet-stream"
 }
 
 @Composable
