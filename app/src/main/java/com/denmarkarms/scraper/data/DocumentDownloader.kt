@@ -66,8 +66,9 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
         try {
             val response = httpClient.newCall(Request.Builder().url(url).build()).execute()
             if (!response.isSuccessful) {
+                val body = response.body?.string()
                 resolver.delete(uri, null, null)
-                throw IllegalStateException(httpErrorMessage(response.code, response.header("Retry-After")))
+                throw IllegalStateException(httpErrorMessage(response.code, response.header("Retry-After"), body))
             }
             resolver.openOutputStream(uri)?.use { out ->
                 response.body?.byteStream()?.copyTo(out)
@@ -94,7 +95,7 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
 
         val finalFilename = nextAvailableFilename(filename) { name -> File(dir, name).exists() }
         val response = httpClient.newCall(Request.Builder().url(url).build()).execute()
-        if (!response.isSuccessful) throw IllegalStateException(httpErrorMessage(response.code, response.header("Retry-After")))
+        if (!response.isSuccessful) throw IllegalStateException(httpErrorMessage(response.code, response.header("Retry-After"), response.body?.string()))
         File(dir, finalFilename).outputStream().use { out ->
             response.body?.byteStream()?.copyTo(out)
         }
@@ -127,7 +128,7 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
         else -> "application/octet-stream"
     }
 
-    private fun httpErrorMessage(code: Int, retryAfter: String?): String {
+    private fun httpErrorMessage(code: Int, retryAfter: String?, body: String? = null): String {
         val base = when (code) {
             429 -> "HTTP 429 — rate limited by portal"
             403 -> "HTTP 403 — access denied"
@@ -135,10 +136,17 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
             404 -> "HTTP 404 — file not found"
             else -> "HTTP $code"
         }
-        retryAfter ?: return base
-        val seconds = retryAfter.toLongOrNull()
-        return if (seconds != null) "$base, retry after ${formatDuration(seconds)}"
-        else "$base, retry after $retryAfter"
+        val withRetry = if (retryAfter != null) {
+            val seconds = retryAfter.toLongOrNull()
+            if (seconds != null) "$base, retry after ${formatDuration(seconds)}" else "$base, retry after $retryAfter"
+        } else base
+        if (body.isNullOrBlank()) return withRetry
+        val snippet = body
+            .replace(Regex("<[^>]+>"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .take(250)
+        return if (snippet.isBlank()) withRetry else "$withRetry\n$snippet"
     }
 
     private fun formatDuration(seconds: Long): String = when {
