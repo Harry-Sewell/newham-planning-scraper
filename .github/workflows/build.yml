@@ -29,6 +29,13 @@ jobs:
           gradle-version: '8.4'
           cache-read-only: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main' }}
 
+      - name: Set version from commit count
+        run: |
+          VERSION_CODE=$(git rev-list --count HEAD)
+          sed -i "s/versionCode = [0-9]*/versionCode = $VERSION_CODE/" app/build.gradle.kts
+          sed -i "s/versionName = \"[^\"]*\"/versionName = \"1.$VERSION_CODE\"/" app/build.gradle.kts
+          echo "versionCode=$VERSION_CODE" >> $GITHUB_STEP_SUMMARY
+
       - name: Build debug APK
         run: gradle :app:assembleDebug
 
