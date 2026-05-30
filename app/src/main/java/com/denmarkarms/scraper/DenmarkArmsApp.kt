@@ -25,7 +25,6 @@ class DenmarkArmsApp : Application() {
         scheduleBackgroundWork()
         applicationScope.launch(Dispatchers.IO) {
             container.db.planningDocumentDao().resetInProgress()
-            container.downloadManager.trigger()
         }
     }
 

@@ -7,6 +7,7 @@ import com.denmarkarms.scraper.DenmarkArmsApp
 import com.denmarkarms.scraper.data.db.entity.ChangeLogEntity
 import com.denmarkarms.scraper.data.db.entity.MonitoredAddressEntity
 import com.denmarkarms.scraper.data.db.entity.MonitoredPersonEntity
+import com.denmarkarms.scraper.data.db.entity.PlanningDocumentEntity
 import com.denmarkarms.scraper.domain.ChangeLogEntry
 import com.denmarkarms.scraper.domain.ChangeType
 import com.denmarkarms.scraper.domain.Recipient
@@ -41,9 +42,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         container.db.monitoredPersonDao().getAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val documentStatusMap: StateFlow<Map<String, String>> =
+    val documentMap: StateFlow<Map<String, PlanningDocumentEntity>> =
         container.db.planningDocumentDao().getAll()
-            .map { docs -> docs.associate { "${it.applicationKeyVal}:${it.name}" to it.downloadStatus } }
+            .map { docs -> docs.associateBy { "${it.applicationKeyVal}:${it.name}" } }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     private val _isChecking = MutableStateFlow(false)
@@ -82,7 +83,6 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 val now = System.currentTimeMillis()
                 _lastChecked.value = now
                 prefs.edit().putLong("last_checked", now).apply()
-                container.downloadManager.trigger()
             }
         }
     }
@@ -119,6 +119,10 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun dismissAll() {
         viewModelScope.launch { container.db.changeLogDao().deleteAll() }
+    }
+
+    fun downloadDocument(doc: PlanningDocumentEntity) {
+        container.downloadManager.downloadDocument(doc.id)
     }
 
     fun formatTimestamp(ts: Long): String =

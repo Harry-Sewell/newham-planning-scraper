@@ -15,7 +15,8 @@ import java.util.Locale
 
 class DataManagerViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val db = (application as DenmarkArmsApp).container.db
+    private val container = (application as DenmarkArmsApp).container
+    private val db = container.db
 
     val applications: StateFlow<List<PlanningApplicationEntity>> =
         db.planningApplicationDao().getAll()
@@ -37,7 +38,10 @@ class DataManagerViewModel(application: Application) : AndroidViewModel(applicat
         db.changeLogDao().getRecent()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Planning applications + documents
+    fun downloadDocument(doc: PlanningDocumentEntity) {
+        container.downloadManager.downloadDocument(doc.id)
+    }
+
     fun deleteApplication(app: PlanningApplicationEntity) = viewModelScope.launch {
         db.planningDocumentDao().deleteForApplication(app.keyVal)
         db.planningApplicationDao().delete(app)
@@ -52,7 +56,6 @@ class DataManagerViewModel(application: Application) : AndroidViewModel(applicat
         db.planningApplicationDao().deleteAll()
     }
 
-    // Persons + their appointments
     fun deletePerson(person: PersonEntity) = viewModelScope.launch {
         db.appointmentDao().deleteForPerson(person.id)
         db.personDao().delete(person)
@@ -63,12 +66,10 @@ class DataManagerViewModel(application: Application) : AndroidViewModel(applicat
         db.personDao().deleteAll()
     }
 
-    // Individual appointments
     fun deleteAppointment(appointment: AppointmentEntity) = viewModelScope.launch {
         db.appointmentDao().delete(appointment)
     }
 
-    // Change log
     fun deleteLogEntry(entry: ChangeLogEntity) = viewModelScope.launch {
         db.changeLogDao().delete(entry)
     }
@@ -79,9 +80,4 @@ class DataManagerViewModel(application: Application) : AndroidViewModel(applicat
 
     fun formatTimestamp(ts: Long): String =
         SimpleDateFormat("dd MMM yyyy HH:mm", Locale.UK).format(Date(ts))
-
-    fun retryFailedDownloads() = viewModelScope.launch {
-        val app = getApplication<DenmarkArmsApp>()
-        app.container.downloadManager.trigger()
-    }
 }

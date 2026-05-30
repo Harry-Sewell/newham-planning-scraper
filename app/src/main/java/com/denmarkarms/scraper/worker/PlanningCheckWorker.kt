@@ -31,7 +31,6 @@ class PlanningCheckWorker(context: Context, params: WorkerParameters) : Coroutin
                 }
             }
             app.container.prefs.edit().putLong("last_checked", System.currentTimeMillis()).apply()
-            app.container.downloadManager.trigger()
             Result.success()
         } catch (e: Exception) {
             Result.retry()

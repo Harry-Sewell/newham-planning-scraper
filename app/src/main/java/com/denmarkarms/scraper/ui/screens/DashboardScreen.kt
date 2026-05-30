@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.denmarkarms.scraper.data.db.entity.ChangeLogEntity
+import com.denmarkarms.scraper.data.db.entity.PlanningDocumentEntity
 import com.denmarkarms.scraper.domain.ChangeType
 import com.denmarkarms.scraper.domain.DownloadStatus
 import com.denmarkarms.scraper.ui.viewmodel.DashboardViewModel
@@ -39,7 +40,7 @@ fun DashboardScreen(vm: DashboardViewModel = viewModel()) {
     val lastChecked by vm.lastChecked.collectAsState()
     val monitoredAddresses by vm.monitoredAddresses.collectAsState()
     val monitoredPersons by vm.monitoredPersons.collectAsState()
-    val documentStatusMap by vm.documentStatusMap.collectAsState()
+    val documentMap by vm.documentMap.collectAsState()
 
     val infiniteTransition = rememberInfiniteTransition(label = "spin")
     val rotationAngle by infiniteTransition.animateFloat(
@@ -123,7 +124,6 @@ fun DashboardScreen(vm: DashboardViewModel = viewModel()) {
                     )
                     Spacer(Modifier.height(16.dp))
 
-                    // Planning addresses
                     if (monitoredAddresses.isEmpty()) {
                         MonitorSummaryRow(Icons.Default.LocationCity, "No addresses configured — add some in Config")
                     } else {
@@ -143,7 +143,6 @@ fun DashboardScreen(vm: DashboardViewModel = viewModel()) {
 
                     Spacer(Modifier.height(12.dp))
 
-                    // People
                     if (monitoredPersons.isEmpty()) {
                         MonitorSummaryRow(Icons.Default.Person, "No people configured — add names in Config")
                     } else {
@@ -189,7 +188,8 @@ fun DashboardScreen(vm: DashboardViewModel = viewModel()) {
                         formattedTime = vm.formatTimestamp(entry.timestamp),
                         onDismiss = { vm.dismissEntry(entry) },
                         actionUrl = changeUrl(entry),
-                        documentStatusMap = documentStatusMap
+                        documentMap = documentMap,
+                        onDownload = { doc -> vm.downloadDocument(doc) }
                     )
                 }
             }
@@ -216,7 +216,8 @@ private fun SwipeToDismissChangeCard(
     formattedTime: String,
     onDismiss: () -> Unit,
     actionUrl: String? = null,
-    documentStatusMap: Map<String, String> = emptyMap()
+    documentMap: Map<String, PlanningDocumentEntity> = emptyMap(),
+    onDownload: (PlanningDocumentEntity) -> Unit = {}
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -249,12 +250,18 @@ private fun SwipeToDismissChangeCard(
         },
         enableDismissFromStartToEnd = false
     ) {
-        ChangeCard(entry, formattedTime, actionUrl, documentStatusMap)
+        ChangeCard(entry, formattedTime, actionUrl, documentMap, onDownload)
     }
 }
 
 @Composable
-private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String, actionUrl: String? = null, documentStatusMap: Map<String, String> = emptyMap()) {
+private fun ChangeCard(
+    entry: ChangeLogEntity,
+    formattedTime: String,
+    actionUrl: String? = null,
+    documentMap: Map<String, PlanningDocumentEntity> = emptyMap(),
+    onDownload: (PlanningDocumentEntity) -> Unit = {}
+) {
     val context = LocalContext.current
     val (icon, accentColor, label) = when (entry.type) {
         ChangeType.NEW_APPLICATION -> Triple(Icons.Default.AddCircle, MaterialTheme.colorScheme.primary, "New Application")
@@ -262,6 +269,7 @@ private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String, actionUrl:
         ChangeType.STATUS_CHANGE -> Triple(Icons.Default.Update, MaterialTheme.colorScheme.tertiary, "Status Change")
         ChangeType.NEW_PERSON -> Triple(Icons.Default.PersonAdd, MaterialTheme.colorScheme.primary, "New Person")
         ChangeType.NEW_APPOINTMENT -> Triple(Icons.Default.Work, MaterialTheme.colorScheme.secondary, "New Appointment")
+        ChangeType.DOWNLOAD_FAILED -> Triple(Icons.Default.ErrorOutline, MaterialTheme.colorScheme.error, "Download Failed")
         else -> Triple(Icons.Default.Info, MaterialTheme.colorScheme.outline, "Info")
     }
     val headline = cardHeadline(entry)
@@ -315,11 +323,68 @@ private fun ChangeCard(entry: ChangeLogEntity, formattedTime: String, actionUrl:
                 )
                 if (entry.type == ChangeType.NEW_DOCUMENT) {
                     val docName = entry.description.substringAfter("): ").substringBeforeLast(" (").trim()
-                    val status = documentStatusMap["${entry.entityId}:$docName"]
-                    if (!status.isNullOrBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        DownloadStatusBadge(status)
+                    val doc = documentMap["${entry.entityId}:$docName"]
+                    if (doc != null && doc.url.isNotBlank()) {
+                        Spacer(Modifier.height(6.dp))
+                        DocumentDownloadRow(doc = doc, onDownload = { onDownload(doc) })
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DocumentDownloadRow(doc: PlanningDocumentEntity, onDownload: () -> Unit) {
+    when (doc.downloadStatus) {
+        DownloadStatus.QUEUED -> {
+            OutlinedButton(
+                onClick = onDownload,
+                modifier = Modifier.height(32.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+            ) {
+                Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Download", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        DownloadStatus.IN_PROGRESS -> {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp)
+                Spacer(Modifier.width(6.dp))
+                Text("Downloading…", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        DownloadStatus.DOWNLOADED -> {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary)
+                Spacer(Modifier.width(4.dp))
+                Text("Downloaded", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
+            }
+        }
+        DownloadStatus.FAILED -> {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.ErrorOutline, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Download failed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold)
+                }
+                if (doc.downloadError.isNotBlank()) {
+                    Text(
+                        doc.downloadError,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = onDownload,
+                    modifier = Modifier.height(32.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Retry", style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -332,22 +397,6 @@ private fun MonitorSummaryRow(icon: androidx.compose.ui.graphics.vector.ImageVec
         Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.width(6.dp))
         Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-    }
-}
-
-@Composable
-private fun DownloadStatusBadge(status: String) {
-    val (icon, color, label) = when (status) {
-        DownloadStatus.QUEUED -> Triple(Icons.Default.Schedule, MaterialTheme.colorScheme.outline, "Queued for download")
-        DownloadStatus.IN_PROGRESS -> Triple(Icons.Default.Downloading, MaterialTheme.colorScheme.primary, "Downloading…")
-        DownloadStatus.DOWNLOADED -> Triple(Icons.Default.CheckCircle, MaterialTheme.colorScheme.tertiary, "Downloaded")
-        DownloadStatus.FAILED -> Triple(Icons.Default.ErrorOutline, MaterialTheme.colorScheme.error, "Download failed")
-        else -> return
-    }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(12.dp), tint = color)
-        Spacer(Modifier.width(4.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = color)
     }
 }
 

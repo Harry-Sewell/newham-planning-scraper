@@ -39,11 +39,8 @@ interface PlanningDocumentDao {
     @Query("SELECT * FROM planning_documents WHERE application_key_val = :keyVal ORDER BY first_seen DESC")
     suspend fun getForApplicationOnce(keyVal: String): List<PlanningDocumentEntity>
 
-    @Query("SELECT * FROM planning_documents WHERE download_status = 'queued' ORDER BY first_seen ASC")
-    suspend fun getQueuedOnce(): List<PlanningDocumentEntity>
-
-    @Query("UPDATE planning_documents SET download_status = 'queued' WHERE download_status = 'failed'")
-    suspend fun requeueFailed()
+    @Query("SELECT * FROM planning_documents WHERE id = :id LIMIT 1")
+    suspend fun findById(id: Long): PlanningDocumentEntity?
 
     @Query("UPDATE planning_documents SET download_status = 'queued' WHERE download_status = 'in_progress'")
     suspend fun resetInProgress()

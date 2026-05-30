@@ -15,10 +15,15 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 
+sealed class DownloadResult {
+    object Success : DownloadResult()
+    data class Failure(val reason: String) : DownloadResult()
+}
+
 class DocumentDownloader(private val context: Context, private val httpClient: OkHttpClient) {
 
-    suspend fun download(url: String, appRef: String, displayName: String): Boolean {
-        if (url.isBlank()) return true
+    suspend fun download(url: String, appRef: String, displayName: String): DownloadResult {
+        if (url.isBlank()) return DownloadResult.Success
         val folder = appRef.replace("/", "_").replace(" ", "_").ifBlank { "planning" }
         val filename = filenameFromUrl(url, displayName)
         return withContext(Dispatchers.IO) {
@@ -28,9 +33,9 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
                 } else {
                     downloadViaFile(url, filename, folder)
                 }
-                true
-            } catch (_: Exception) {
-                false
+                DownloadResult.Success
+            } catch (e: Exception) {
+                DownloadResult.Failure(e.message ?: "Unknown error")
             }
         }
     }

@@ -78,6 +78,7 @@ object ChangeType {
     const val STATUS_CHANGE = "STATUS_CHANGE"
     const val NEW_PERSON = "NEW_PERSON"
     const val NEW_APPOINTMENT = "NEW_APPOINTMENT"
+    const val DOWNLOAD_FAILED = "DOWNLOAD_FAILED"
 }
 
 object RecipientType {
@@ -95,7 +96,6 @@ object PrefsKeys {
     const val TWILIO_AUTH_TOKEN = "twilio_auth_token"
     const val TWILIO_FROM_NUMBER = "twilio_from_number"
     const val COMPANIES_HOUSE_API_KEY = "ch_api_key"
-    const val DOWNLOAD_DELAY_SECS = "download_delay_secs"
 }
 
 object DownloadStatus {

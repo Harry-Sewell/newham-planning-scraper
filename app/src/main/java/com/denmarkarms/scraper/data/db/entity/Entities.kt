@@ -27,7 +27,8 @@ data class PlanningDocumentEntity(
     @ColumnInfo(name = "date") val date: String,
     @ColumnInfo(name = "url") val url: String,
     @ColumnInfo(name = "first_seen") val firstSeen: Long,
-    @ColumnInfo(name = "download_status") val downloadStatus: String = DownloadStatus.QUEUED
+    @ColumnInfo(name = "download_status") val downloadStatus: String = DownloadStatus.QUEUED,
+    @ColumnInfo(name = "download_error") val downloadError: String = ""
 )
 
 @Entity(tableName = "monitored_addresses")
