@@ -40,7 +40,7 @@ class AppContainer(context: Context, private val scope: CoroutineScope) {
     val documentDownloader = DocumentDownloader(context, httpClient)
     val downloadManager = DocumentDownloadManager(db, documentDownloader, scope)
 
-    val planningRepository = PlanningRepository(db, newhamService)
+    val planningRepository = PlanningRepository(db, newhamService, downloadManager)
     val companiesHouseRepository = CompaniesHouseRepository(db, companiesHouseService, prefs)
 
     val notificationSender = NotificationSender(prefs, httpClient)

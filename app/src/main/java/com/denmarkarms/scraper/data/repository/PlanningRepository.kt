@@ -1,5 +1,6 @@
 package com.denmarkarms.scraper.data.repository
 
+import com.denmarkarms.scraper.data.DocumentDownloadManager
 import com.denmarkarms.scraper.data.db.AppDatabase
 import com.denmarkarms.scraper.data.db.entity.*
 import com.denmarkarms.scraper.data.network.NewhamPlanningService
@@ -9,7 +10,8 @@ import kotlinx.coroutines.flow.map
 
 class PlanningRepository(
     private val db: AppDatabase,
-    private val service: NewhamPlanningService
+    private val service: NewhamPlanningService,
+    private val downloadManager: DocumentDownloadManager
 ) {
     val applications: Flow<List<PlanningApplication>> =
         db.planningApplicationDao().getAll().map { list -> list.map { it.toDomain() } }
@@ -98,6 +100,7 @@ class PlanningRepository(
         for (doc in freshDocs) {
             val alreadyKnown = if (doc.url.isNotBlank()) doc.url in knownUrls else doc.name in knownNames
             if (!alreadyKnown) {
+                val hasUrl = doc.url.isNotBlank()
                 val docId = db.planningDocumentDao().insert(
                     PlanningDocumentEntity(
                         applicationKeyVal = keyVal,
@@ -105,9 +108,10 @@ class PlanningRepository(
                         date = doc.date,
                         url = doc.url,
                         firstSeen = now,
-                        downloadStatus = if (doc.url.isNotBlank()) DownloadStatus.QUEUED else DownloadStatus.DOWNLOADED
+                        downloadStatus = if (hasUrl) DownloadStatus.QUEUED else DownloadStatus.DOWNLOADED
                     )
                 )
+                if (hasUrl) downloadManager.downloadDocument(docId)
                 val entry = ChangeLogEntry(
                     type = ChangeType.NEW_DOCUMENT,
                     description = "New document for $appRef ($keyVal): ${doc.name} (${doc.date})",
