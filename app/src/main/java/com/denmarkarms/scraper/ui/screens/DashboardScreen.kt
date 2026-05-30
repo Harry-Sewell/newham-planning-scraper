@@ -216,7 +216,7 @@ private fun SwipeToDismissChangeCard(
     formattedTime: String,
     onDismiss: () -> Unit,
     actionUrl: String? = null,
-    documentMap: Map<String, PlanningDocumentEntity> = emptyMap(),
+    documentMap: Map<Long, PlanningDocumentEntity> = emptyMap(),
     onDownload: (PlanningDocumentEntity) -> Unit = {}
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
@@ -259,7 +259,7 @@ private fun ChangeCard(
     entry: ChangeLogEntity,
     formattedTime: String,
     actionUrl: String? = null,
-    documentMap: Map<String, PlanningDocumentEntity> = emptyMap(),
+    documentMap: Map<Long, PlanningDocumentEntity> = emptyMap(),
     onDownload: (PlanningDocumentEntity) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -322,7 +322,7 @@ private fun ChangeCard(
                     color = MaterialTheme.colorScheme.outline
                 )
                 if (entry.type == ChangeType.NEW_DOCUMENT) {
-                    val doc = documentMap["${entry.entityId}:${entry.timestamp}"]
+                    val doc = if (entry.documentId > 0) documentMap[entry.documentId] else null
                     if (doc != null && doc.url.isNotBlank()) {
                         Spacer(Modifier.height(6.dp))
                         DocumentDownloadRow(doc = doc, onDownload = { onDownload(doc) })

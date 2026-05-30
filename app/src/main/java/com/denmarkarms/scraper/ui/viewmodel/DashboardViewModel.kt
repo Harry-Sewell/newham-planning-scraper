@@ -42,9 +42,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         container.db.monitoredPersonDao().getAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val documentMap: StateFlow<Map<String, PlanningDocumentEntity>> =
+    val documentMap: StateFlow<Map<Long, PlanningDocumentEntity>> =
         container.db.planningDocumentDao().getAll()
-            .map { docs -> docs.associateBy { "${it.applicationKeyVal}:${it.firstSeen}" } }
+            .map { docs -> docs.associateBy { it.id } }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     private val _isChecking = MutableStateFlow(false)

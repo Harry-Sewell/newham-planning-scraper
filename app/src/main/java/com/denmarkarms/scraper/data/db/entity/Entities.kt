@@ -84,5 +84,6 @@ data class ChangeLogEntity(
     @ColumnInfo(name = "type") val type: String,
     @ColumnInfo(name = "description") val description: String,
     @ColumnInfo(name = "entity_id") val entityId: String = "",
-    @ColumnInfo(name = "timestamp") val timestamp: Long
+    @ColumnInfo(name = "timestamp") val timestamp: Long,
+    @ColumnInfo(name = "document_id") val documentId: Long = 0
 )

@@ -98,7 +98,7 @@ class PlanningRepository(
         for (doc in freshDocs) {
             val alreadyKnown = if (doc.url.isNotBlank()) doc.url in knownUrls else doc.name in knownNames
             if (!alreadyKnown) {
-                db.planningDocumentDao().insert(
+                val docId = db.planningDocumentDao().insert(
                     PlanningDocumentEntity(
                         applicationKeyVal = keyVal,
                         name = doc.name,
@@ -115,7 +115,15 @@ class PlanningRepository(
                     timestamp = now
                 )
                 changes.add(entry)
-                db.changeLogDao().insert(entry.toEntity())
+                db.changeLogDao().insert(
+                    com.denmarkarms.scraper.data.db.entity.ChangeLogEntity(
+                        type = entry.type,
+                        description = entry.description,
+                        entityId = entry.entityId,
+                        timestamp = entry.timestamp,
+                        documentId = docId
+                    )
+                )
             }
         }
         return changes

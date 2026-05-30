@@ -128,11 +128,17 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
     }
 
     private fun httpErrorMessage(code: Int, retryAfter: String?): String {
-        val base = "HTTP $code"
+        val base = when (code) {
+            429 -> "HTTP 429 — rate limited by portal"
+            403 -> "HTTP 403 — access denied"
+            401 -> "HTTP 401 — not authorised"
+            404 -> "HTTP 404 — file not found"
+            else -> "HTTP $code"
+        }
         retryAfter ?: return base
         val seconds = retryAfter.toLongOrNull()
-        return if (seconds != null) "$base — retry after ${formatDuration(seconds)}"
-        else "$base — retry after $retryAfter"
+        return if (seconds != null) "$base, retry after ${formatDuration(seconds)}"
+        else "$base, retry after $retryAfter"
     }
 
     private fun formatDuration(seconds: Long): String = when {
