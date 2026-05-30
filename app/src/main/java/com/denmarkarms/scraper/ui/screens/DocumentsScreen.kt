@@ -149,6 +149,14 @@ private fun DocumentRow(doc: PlanningDocumentEntity, onDownload: () -> Unit) {
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(doc.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                val filename = docFilename(doc.url, doc.name)
+                if (filename != null) {
+                    Text(
+                        filename,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
                 if (doc.date.isNotBlank()) {
                     Text(
                         doc.date,
@@ -218,6 +226,13 @@ private fun DocumentStatusRow(doc: PlanningDocumentEntity, onDownload: () -> Uni
             }
         }
     }
+}
+
+private fun docFilename(url: String, name: String): String? {
+    if (url.isBlank()) return null
+    val fromUrl = url.substringAfterLast("/").takeIf { it.isNotBlank() && it.contains(".") }
+    val filename = fromUrl ?: "${name.replace("""[\\/:"*?<>|]""".toRegex(), "_")}.pdf"
+    return filename.takeIf { it != name }
 }
 
 @Composable
