@@ -67,7 +67,7 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
             val response = httpClient.newCall(Request.Builder().url(url).build()).execute()
             if (!response.isSuccessful) {
                 resolver.delete(uri, null, null)
-                throw IllegalStateException("HTTP ${response.code}")
+                throw IllegalStateException(httpErrorMessage(response.code, response.header("Retry-After")))
             }
             resolver.openOutputStream(uri)?.use { out ->
                 response.body?.byteStream()?.copyTo(out)
@@ -94,7 +94,7 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
 
         val finalFilename = nextAvailableFilename(filename) { name -> File(dir, name).exists() }
         val response = httpClient.newCall(Request.Builder().url(url).build()).execute()
-        if (!response.isSuccessful) throw IllegalStateException("HTTP ${response.code}")
+        if (!response.isSuccessful) throw IllegalStateException(httpErrorMessage(response.code, response.header("Retry-After")))
         File(dir, finalFilename).outputStream().use { out ->
             response.body?.byteStream()?.copyTo(out)
         }
@@ -125,5 +125,25 @@ class DocumentDownloader(private val context: Context, private val httpClient: O
         filename.endsWith(".docx", ignoreCase = true) ->
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         else -> "application/octet-stream"
+    }
+
+    private fun httpErrorMessage(code: Int, retryAfter: String?): String {
+        val base = "HTTP $code"
+        retryAfter ?: return base
+        val seconds = retryAfter.toLongOrNull()
+        return if (seconds != null) "$base — retry after ${formatDuration(seconds)}"
+        else "$base — retry after $retryAfter"
+    }
+
+    private fun formatDuration(seconds: Long): String = when {
+        seconds < 60 -> "${seconds}s"
+        seconds < 3600 -> {
+            val m = seconds / 60; val s = seconds % 60
+            if (s == 0L) "${m}m" else "${m}m ${s}s"
+        }
+        else -> {
+            val h = seconds / 3600; val m = (seconds % 3600) / 60
+            if (m == 0L) "${h}h" else "${h}h ${m}m"
+        }
     }
 }
